@@ -280,9 +280,91 @@ export class Session {
 
   /**
    * Capture a screenshot and return PNG bytes.
-   * Requires the `screenshot-desktop` package.
+   *
+   * On macOS, uses the `screencapture` system utility and checks
+   * Screen Recording permission upfront — raises an error with
+   * a clear message if the permission is missing.
+   *
+   * On other platforms, requires the `screenshot-desktop` package:
+   * `npm install screenshot-desktop`
+   *
+   * @throws {Error} On macOS if Screen Recording permission is not granted.
+   * @throws {Error} On other platforms if `screenshot-desktop` is not installed.
    */
   async screenshot(region?: Rect): Promise<Buffer> {
+    if (process.platform === "darwin") {
+      return this._screenshotMacos(region);
+    }
+    return this._screenshotDesktop(region);
+  }
+
+  private async _screenshotMacos(region?: Rect): Promise<Buffer> {
+    const { execFile: execFileCb } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+
+    const execFileAsync = promisify(execFileCb);
+
+    // Check Screen Recording permission via CGWindowListCopyWindowInfo.
+    // Without it, all screenshot APIs return only the desktop wallpaper.
+    try {
+      const { stdout } = await execFileAsync(
+        "osascript",
+        [
+          "-l", "JavaScript", "-e",
+          `ObjC.import('CoreGraphics');` +
+          `const wins = $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0);` +
+          `let hasName = false;` +
+          `for (let i = 0; i < wins.count; i++) {` +
+          `  const name = wins.objectAtIndex(i).objectForKey('kCGWindowName');` +
+          `  if (name && ObjC.unwrap(name).length > 0) { hasName = true; break; }` +
+          `}` +
+          `hasName ? 'ok' : 'no_permission';`,
+        ],
+        { timeout: 5000 },
+      );
+      if (stdout.trim() === "no_permission") {
+        throw new Error(
+          "Screen Recording permission is required for screenshots. " +
+            "Grant it to this app in: System Settings > Privacy & Security " +
+            "> Screen Recording. You may need to restart the app after granting.",
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Screen Recording")) {
+        throw err;
+      }
+      // If the check itself fails, proceed and let screencapture handle it
+    }
+
+    const tmpPath = path.join(os.tmpdir(), `cup-screenshot-${Date.now()}.png`);
+
+    try {
+      const args = ["-x"]; // -x = no sound
+      if (region) {
+        args.push("-R", `${region.x},${region.y},${region.w},${region.h}`);
+      }
+      args.push(tmpPath);
+
+      await execFileAsync("screencapture", args, { timeout: 10000 });
+
+      const data = fs.readFileSync(tmpPath);
+      if (data.length === 0) {
+        throw new Error("screencapture produced an empty file");
+      }
+      return data;
+    } finally {
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+  }
+
+  private async _screenshotDesktop(region?: Rect): Promise<Buffer> {
     let screenshotDesktop: (options?: any) => Promise<Buffer>;
     try {
       const mod = await import("screenshot-desktop");
@@ -297,7 +379,6 @@ export class Session {
     const png = await screenshotDesktop({ format: "png" });
 
     // If a region is specified, we'd need an image manipulation library
-    // For now, return the full screenshot
     if (region) {
       // TODO: Crop to region using sharp or similar
       return png;

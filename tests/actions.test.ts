@@ -86,3 +86,45 @@ describe("VALID_ACTIONS", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// MacosActionHandler
+// ---------------------------------------------------------------------------
+
+describe("MacosActionHandler", () => {
+  it("returns error for unknown action", async () => {
+    const { MacosActionHandler } = await import("../src/actions/macos.js");
+    const handler = new MacosActionHandler();
+    const result = await handler.execute(null, "fly", {});
+    expect(result.success).toBe(false);
+    expect(result.error?.toLowerCase()).toContain("not implemented");
+  });
+
+  it("pressKeys works on macOS", async () => {
+    if (process.platform !== "darwin") return; // skip on non-macOS
+
+    const { MacosActionHandler } = await import("../src/actions/macos.js");
+    const handler = new MacosActionHandler();
+    const result = await handler.pressKeys("escape");
+    expect(result.success).toBe(true);
+    expect(result.message).toContain("Pressed");
+  }, 60000); // First run compiles the Swift helper (~30s)
+
+  it("launchApp rejects empty name", async () => {
+    const { MacosActionHandler } = await import("../src/actions/macos.js");
+    const handler = new MacosActionHandler();
+    const result = await handler.launchApp("");
+    expect(result.success).toBe(false);
+    expect(result.error?.toLowerCase()).toContain("empty");
+  });
+
+  it("launchApp rejects nonexistent app", async () => {
+    if (process.platform !== "darwin") return; // skip on non-macOS
+
+    const { MacosActionHandler } = await import("../src/actions/macos.js");
+    const handler = new MacosActionHandler();
+    const result = await handler.launchApp("zzzznonexistentapp99999");
+    expect(result.success).toBe(false);
+    expect(result.error?.toLowerCase()).toContain("no installed app");
+  });
+});
