@@ -11,7 +11,7 @@
 <br>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/cup"><img src="https://img.shields.io/npm/v/cup?style=for-the-badge&color=FF6F61&labelColor=000000" alt="npm"></a>
+  <a href="https://www.npmjs.com/package/computer-use-protocol"><img src="https://img.shields.io/npm/v/computer-use-protocol?style=for-the-badge&color=FF6F61&labelColor=000000" alt="npm"></a>
   <a href="https://github.com/computeruseprotocol/typescript-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-0cc0df?style=for-the-badge&labelColor=000000" alt="MIT License"></a>
   <a href="https://github.com/computeruseprotocol/computer-use-protocol"><img src="https://img.shields.io/badge/Spec-computer--use--protocol-7ed957?style=for-the-badge&labelColor=000000" alt="Spec"></a>
 </p>
@@ -22,16 +22,16 @@ The official TypeScript SDK for the [Computer Use Protocol (CUP)](https://github
 
 ```bash
 # npm
-npm install cup
+npm install computer-use-protocol
 
 # bun
-bun add cup
+bun add computer-use-protocol
 ```
 
 ## Quick start
 
 ```typescript
-import { getTree, getForegroundTree, getCompact } from "cup";
+import { getTree, getForegroundTree, getCompact } from "computer-use-protocol";
 
 // Full accessibility tree as a CUP envelope
 const envelope = await getTree();
@@ -62,7 +62,7 @@ Output (compact format):
 ### Session API
 
 ```typescript
-import { Session } from "cup";
+import { Session } from "computer-use-protocol";
 
 const session = await Session.create();
 
