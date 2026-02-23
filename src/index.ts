@@ -5,16 +5,17 @@
  *
  * Quick start:
  *
- *   import { Session, getCompact, getForegroundTree } from "cup";
+ *   import { Session, snapshot, overview } from "cup";
  *
  *   // Session is the primary API — capture + actions
  *   const session = await Session.create();
- *   const tree = await session.capture({ scope: "overview" });
- *   const result = await session.execute("e14", "click");
+ *   const tree = await session.snapshot({ scope: "overview" });
+ *   const result = await session.action("e14", "click");
  *
  *   // Convenience functions (use a default session internally)
- *   const envelope = await getForegroundTree();
- *   const text = await getCompact();
+ *   const text = await snapshot();
+ *   const raw = await snapshotRaw();
+ *   const windows = await overview();
  */
 
 import type { PlatformAdapter } from "./base.js";
@@ -66,7 +67,7 @@ export class Session {
   /**
    * Capture the accessibility tree.
    */
-  async capture(options?: {
+  async snapshot(options?: {
     scope?: Scope;
     app?: string;
     maxDepth?: number;
@@ -181,34 +182,34 @@ export class Session {
   }
 
   /**
-   * Execute an action on an element from the last capture.
+   * Execute an action on an element from the last snapshot.
    */
-  async execute(
+  async action(
     elementId: string,
-    action: string,
+    actionName: string,
     params?: Record<string, unknown>,
   ): Promise<ActionResult> {
-    return this.executor.execute(elementId, action, params);
+    return this.executor.action(elementId, actionName, params);
   }
 
   /**
    * Send a keyboard shortcut to the focused window.
    */
-  async pressKeys(combo: string): Promise<ActionResult> {
-    return this.executor.pressKeys(combo);
+  async press(combo: string): Promise<ActionResult> {
+    return this.executor.press(combo);
   }
 
   /**
-   * Launch an application by name (fuzzy matched).
+   * Open an application by name (fuzzy matched).
    */
-  async launchApp(name: string): Promise<ActionResult> {
-    return this.executor.launchApp(name);
+  async openApp(name: string): Promise<ActionResult> {
+    return this.executor.openApp(name);
   }
 
   /**
    * Search the last captured tree for matching elements.
    */
-  async findElements(options: {
+  async find(options: {
     query?: string;
     role?: string;
     name?: string;
@@ -216,7 +217,7 @@ export class Session {
     limit?: number;
   }): Promise<CupNode[]> {
     if (this.lastRawTree === null) {
-      await this.capture({ scope: "foreground", compact: true });
+      await this.snapshot({ scope: "foreground", compact: true });
     }
 
     const results = searchTree(this.lastRawTree!, {
@@ -233,7 +234,7 @@ export class Session {
   /**
    * Execute a sequence of actions, stopping on first failure.
    */
-  async batchExecute(actions: BatchAction[]): Promise<ActionResult[]> {
+  async batch(actions: BatchAction[]): Promise<ActionResult[]> {
     const results: ActionResult[] = [];
 
     for (const spec of actions) {
@@ -243,17 +244,17 @@ export class Session {
         const ms = Math.max(50, Math.min((spec as any).ms ?? 500, 5000));
         await new Promise((resolve) => setTimeout(resolve, ms));
         result = { success: true, message: `Waited ${ms}ms` };
-      } else if (spec.action === "press_keys") {
+      } else if (spec.action === "press") {
         const keys = (spec as any).keys as string;
         if (!keys) {
           results.push({
             success: false,
             message: "",
-            error: "press_keys action requires 'keys' parameter",
+            error: "press action requires 'keys' parameter",
           });
           break;
         }
-        result = await this.pressKeys(keys);
+        result = await this.press(keys);
       } else {
         const elemSpec = spec as { element_id: string; action: string; [k: string]: unknown };
         if (!elemSpec.element_id) {
@@ -268,7 +269,7 @@ export class Session {
         for (const [k, v] of Object.entries(elemSpec)) {
           if (k !== "element_id" && k !== "action") params[k] = v;
         }
-        result = await this.execute(elemSpec.element_id, elemSpec.action, params);
+        result = await this.action(elemSpec.element_id, elemSpec.action, params);
       }
 
       results.push(result);
@@ -404,50 +405,36 @@ async function getDefaultSession(): Promise<Session> {
 // Convenience functions
 // ---------------------------------------------------------------------------
 
-/** Capture the full accessibility tree (all windows) as a CUP envelope. */
-export async function getTree(options?: { maxDepth?: number }): Promise<CupEnvelope> {
+/** Capture the screen as LLM-optimized compact text. */
+export async function snapshot(
+  scope: Scope = "foreground",
+  options?: { maxDepth?: number },
+): Promise<string> {
   const session = await getDefaultSession();
-  return session.capture({
-    scope: "full",
-    maxDepth: options?.maxDepth ?? 999,
-    compact: false,
-  }) as Promise<CupEnvelope>;
-}
-
-/** Capture the foreground window's tree as a CUP envelope. */
-export async function getForegroundTree(options?: { maxDepth?: number }): Promise<CupEnvelope> {
-  const session = await getDefaultSession();
-  return session.capture({
-    scope: "foreground",
-    maxDepth: options?.maxDepth ?? 999,
-    compact: false,
-  }) as Promise<CupEnvelope>;
-}
-
-/** Capture full tree and return CUP compact text (for LLM context). */
-export async function getCompact(options?: { maxDepth?: number }): Promise<string> {
-  const session = await getDefaultSession();
-  return session.capture({
-    scope: "full",
+  return session.snapshot({
+    scope,
     maxDepth: options?.maxDepth ?? 999,
     compact: true,
   }) as Promise<string>;
 }
 
-/** Capture foreground window and return CUP compact text. */
-export async function getForegroundCompact(options?: { maxDepth?: number }): Promise<string> {
+/** Capture the screen as a structured CUP envelope dict. */
+export async function snapshotRaw(
+  scope: Scope = "foreground",
+  options?: { maxDepth?: number },
+): Promise<CupEnvelope> {
   const session = await getDefaultSession();
-  return session.capture({
-    scope: "foreground",
+  return session.snapshot({
+    scope,
     maxDepth: options?.maxDepth ?? 999,
-    compact: true,
-  }) as Promise<string>;
+    compact: false,
+  }) as Promise<CupEnvelope>;
 }
 
-/** Get a compact window list (no tree walking). Near-instant. */
-export async function getOverview(): Promise<string> {
+/** List all open windows (no tree walking). Near-instant. */
+export async function overview(): Promise<string> {
   const session = await getDefaultSession();
-  return session.capture({ scope: "overview", compact: true }) as Promise<string>;
+  return session.snapshot({ scope: "overview", compact: true }) as Promise<string>;
 }
 
 // ---------------------------------------------------------------------------

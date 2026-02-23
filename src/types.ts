@@ -339,7 +339,7 @@ export interface ActionResult {
 
 export type BatchAction =
   | { action: "wait"; ms?: number }
-  | { action: "press_keys"; keys: string }
+  | { action: "press"; keys: string }
   | { element_id: string; action: string; [key: string]: unknown };
 
 // ---------------------------------------------------------------------------

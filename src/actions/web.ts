@@ -80,24 +80,24 @@ export class WebActionHandler implements ActionHandler {
     this.host = options?.cdpHost ?? process.env.CUP_CDP_HOST ?? "127.0.0.1";
   }
 
-  async execute(
+  async action(
     nativeRef: unknown,
-    action: string,
+    actionName: string,
     params: Record<string, unknown>,
   ): Promise<ActionResult> {
     const { cdpConnect, cdpClose } = await import("../platforms/web.js");
     const [wsUrl, backendNodeId] = nativeRef as [string, number];
     const ws = await cdpConnect(wsUrl, this.host);
     try {
-      return await this.dispatch(ws, backendNodeId, action, params);
+      return await this.dispatch(ws, backendNodeId, actionName, params);
     } catch (err) {
-      return { success: false, message: "", error: `Web action '${action}' failed: ${err}` };
+      return { success: false, message: "", error: `Web action '${actionName}' failed: ${err}` };
     } finally {
       cdpClose(ws);
     }
   }
 
-  async pressKeys(combo: string): Promise<ActionResult> {
+  async press(combo: string): Promise<ActionResult> {
     const { cdpConnect, cdpClose, cdpGetTargets } = await import("../platforms/web.js");
     const port = parseInt(process.env.CUP_CDP_PORT ?? "9222", 10);
 
@@ -105,12 +105,12 @@ export class WebActionHandler implements ActionHandler {
     try {
       targets = await cdpGetTargets(this.host, port);
     } catch (err) {
-      return { success: false, message: "", error: `Cannot connect to CDP for press_keys: ${err}` };
+      return { success: false, message: "", error: `Cannot connect to CDP for press: ${err}` };
     }
 
     const pageTargets = targets.filter((t) => t.type === "page");
     if (pageTargets.length === 0) {
-      return { success: false, message: "", error: "No browser tabs found for press_keys" };
+      return { success: false, message: "", error: "No browser tabs found for press" };
     }
 
     const wsUrl = pageTargets[0].webSocketDebuggerUrl as string;
@@ -125,11 +125,11 @@ export class WebActionHandler implements ActionHandler {
     }
   }
 
-  async launchApp(_name: string): Promise<ActionResult> {
+  async openApp(_name: string): Promise<ActionResult> {
     return {
       success: false,
       message: "",
-      error: "launch_app is not applicable for web platform",
+      error: "open_app is not applicable for web platform",
     };
   }
 
@@ -138,10 +138,10 @@ export class WebActionHandler implements ActionHandler {
   private async dispatch(
     ws: unknown,
     backendNodeId: number,
-    action: string,
+    actionName: string,
     params: Record<string, unknown>,
   ): Promise<ActionResult> {
-    switch (action) {
+    switch (actionName) {
       case "click":
         return this.doClick(ws, backendNodeId);
       case "rightclick":
@@ -170,7 +170,7 @@ export class WebActionHandler implements ActionHandler {
       case "decrement":
         return this.doArrowKey(ws, backendNodeId, "ArrowDown");
       default:
-        return { success: false, message: "", error: `Action '${action}' not implemented for web` };
+        return { success: false, message: "", error: `Action '${actionName}' not implemented for web` };
     }
   }
 

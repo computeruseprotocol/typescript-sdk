@@ -107,14 +107,14 @@ npx cup --platform web --cdp-port 9222 --compact
 
 | Platform | Adapter | Tree Capture | Actions |
 |----------|---------|-------------|---------|
+| Windows | UIA via PowerShell + C# | Stable | Stable |
+| macOS | AXUIElement via Swift + JXA | Stable | Stable |
+| Linux | AT-SPI2 via gdbus + xdotool | Stable | Stable |
 | Web | Chrome DevTools Protocol | Stable | Stable |
-| Windows | — | Stub | Stub |
-| macOS | — | Stub | Stub |
-| Linux | — | Stub | Stub |
 | Android | | Planned | Planned |
 | iOS | | Planned | Planned |
 
-The Web adapter is fully implemented via Chrome DevTools Protocol (CDP). Native platform adapters (Windows UIA, macOS AXUIElement, Linux AT-SPI2) are stubs — contributions welcome.
+CUP auto-detects your platform. The Web adapter uses Chrome DevTools Protocol (CDP) and works on any OS. Native adapters use platform accessibility APIs via compiled helpers (C# on Windows, Swift on macOS, gdbus on Linux).
 
 ## Architecture
 
@@ -131,14 +131,14 @@ src/
 │   ├── executor.ts             # ActionExecutor orchestrator
 │   ├── keys.ts                 # Key combo parsing
 │   ├── web.ts                  # Chrome CDP actions
-│   ├── windows.ts              # Windows actions (stub)
-│   ├── macos.ts                # macOS actions (stub)
-│   └── linux.ts                # Linux actions (stub)
+│   ├── windows.ts              # Windows UIA + SendInput actions
+│   ├── macos.ts                # macOS AX + CGEvent actions
+│   └── linux.ts                # Linux AT-SPI2 + xdotool actions
 ├── platforms/                  # Platform-specific tree capture
-│   ├── web.ts                  # Chrome CDP adapter (full)
-│   ├── windows.ts              # Windows adapter (stub)
-│   ├── macos.ts                # macOS adapter (stub)
-│   └── linux.ts                # Linux adapter (stub)
+│   ├── web.ts                  # Chrome CDP adapter
+│   ├── windows.ts              # Windows UIA adapter
+│   ├── macos.ts                # macOS AXUIElement adapter
+│   └── linux.ts                # Linux AT-SPI2 adapter
 └── mcp/                        # MCP server integration
     ├── server.ts               # MCP protocol server
     └── cli.ts                  # Stdio transport entry point
@@ -177,13 +177,19 @@ Add to your MCP client config (e.g., `.mcp.json` for Claude Code):
 
 CUP is in early development (v0.1.0). Contributions welcome — especially:
 
-- Windows adapter (`src/platforms/windows.ts`) via UIA / node-ffi-napi
-- macOS adapter (`src/platforms/macos.ts`) via AXUIElement / native bindings
-- Linux adapter (`src/platforms/linux.ts`) via AT-SPI2 / D-Bus
-- Android / iOS adapters
-- Tests and CI across platforms
+- Android adapter (`src/platforms/android.ts`)
+- iOS adapter (`src/platforms/ios.ts`)
+- Tests — especially cross-platform integration tests
+- Documentation and examples
 
 For protocol or schema changes, please contribute to [computer-use-protocol](https://github.com/computeruseprotocol/computer-use-protocol).
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
+
+## Documentation
+
+- **[API Reference](docs/api-reference.md)** — Session API, actions, envelope format, MCP server
+- **[Protocol Specification](https://github.com/computeruseprotocol/computer-use-protocol)** — Schema, roles, states, actions, compact format
 
 ## License
 

@@ -487,8 +487,8 @@ export function serializeCompact(
     }
     truncated +=
       "\n\n# OUTPUT TRUNCATED — exceeded character limit.\n" +
-      "# Use find_element(name=...) to locate specific elements instead.\n" +
-      "# Or use get_tree(app='<title>') to target a specific window.\n";
+      "# Use find(name=...) to locate specific elements instead.\n" +
+      "# Or use snapshot_app(app='<title>') to target a specific window.\n";
     return truncated;
   }
 

@@ -14,7 +14,7 @@
  * See Python reference: cup/actions/_linux.py
  */
 
-import { execFile, execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -426,6 +426,309 @@ async function atspiGetMinMaxIncrement(
 }
 
 // ---------------------------------------------------------------------------
+// AT-SPI2 EditableText helpers (via gdbus)
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the character count from the Text interface.
+ */
+async function atspiGetCharacterCount(
+  ref: LinuxNativeRef,
+): Promise<number> {
+  if (ref.accessible && typeof ref.accessible === "object") {
+    try {
+      const acc = ref.accessible as any;
+      const textIface = acc.get_text_iface?.();
+      if (textIface) return textIface.get_character_count();
+    } catch {
+      // Fall through
+    }
+  }
+
+  if (!ref.busName || !ref.objectPath) return 0;
+
+  try {
+    const { stdout } = await execFileAsync(
+      "gdbus",
+      [
+        "call", "--session",
+        "--dest", ref.busName,
+        "--object-path", ref.objectPath,
+        "--method", "org.freedesktop.DBus.Properties.Get",
+        "org.a11y.atspi.Text", "CharacterCount",
+      ],
+      { timeout: 5000 },
+    );
+    const match = stdout.match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Delete text via the EditableText interface.
+ */
+async function atspiDeleteText(
+  ref: LinuxNativeRef,
+  startPos: number,
+  endPos: number,
+): Promise<boolean> {
+  if (ref.accessible && typeof ref.accessible === "object") {
+    try {
+      const acc = ref.accessible as any;
+      const editableIface = acc.get_editable_text_iface?.();
+      if (editableIface) {
+        editableIface.delete_text(startPos, endPos);
+        return true;
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  if (!ref.busName || !ref.objectPath) return false;
+
+  try {
+    await execFileAsync(
+      "gdbus",
+      [
+        "call", "--session",
+        "--dest", ref.busName,
+        "--object-path", ref.objectPath,
+        "--method", "org.a11y.atspi.EditableText.DeleteText",
+        String(startPos), String(endPos),
+      ],
+      { timeout: 5000 },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Insert text via the EditableText interface.
+ */
+async function atspiInsertText(
+  ref: LinuxNativeRef,
+  position: number,
+  text: string,
+): Promise<boolean> {
+  if (ref.accessible && typeof ref.accessible === "object") {
+    try {
+      const acc = ref.accessible as any;
+      const editableIface = acc.get_editable_text_iface?.();
+      if (editableIface) {
+        editableIface.insert_text(position, text, Buffer.byteLength(text, "utf-8"));
+        return true;
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  if (!ref.busName || !ref.objectPath) return false;
+
+  try {
+    const byteLen = Buffer.byteLength(text, "utf-8");
+    await execFileAsync(
+      "gdbus",
+      [
+        "call", "--session",
+        "--dest", ref.busName,
+        "--object-path", ref.objectPath,
+        "--method", "org.a11y.atspi.EditableText.InsertText",
+        String(position), text, String(byteLen),
+      ],
+      { timeout: 5000 },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if the element has the EditableText interface available.
+ */
+async function atspiHasEditableText(ref: LinuxNativeRef): Promise<boolean> {
+  if (ref.accessible && typeof ref.accessible === "object") {
+    try {
+      const acc = ref.accessible as any;
+      return acc.get_editable_text_iface?.() != null;
+    } catch {
+      return false;
+    }
+  }
+
+  if (!ref.busName || !ref.objectPath) return false;
+
+  // Probe by attempting a no-op InsertText — if the interface exists it will succeed
+  try {
+    await execFileAsync(
+      "gdbus",
+      [
+        "call", "--session",
+        "--dest", ref.busName,
+        "--object-path", ref.objectPath,
+        "--method", "org.a11y.atspi.EditableText.InsertText",
+        "0", "", "0",
+      ],
+      { timeout: 3000 },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get the state set of an element (returns state names as strings).
+ * Used for checking expand/collapse state before acting.
+ */
+async function atspiGetStates(
+  ref: LinuxNativeRef,
+): Promise<Set<string>> {
+  const states = new Set<string>();
+
+  if (ref.accessible && typeof ref.accessible === "object") {
+    try {
+      const acc = ref.accessible as any;
+      const stateSet = acc.get_state_set?.();
+      if (stateSet) {
+        const activeStates = stateSet.get_states?.();
+        if (activeStates) {
+          for (const st of activeStates) {
+            const name = (st.value_nick || "").replace(/_/g, "-");
+            if (name) states.add(name);
+          }
+        }
+        return states;
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  if (!ref.busName || !ref.objectPath) return states;
+
+  try {
+    const { stdout } = await execFileAsync(
+      "gdbus",
+      [
+        "call", "--session",
+        "--dest", ref.busName,
+        "--object-path", ref.objectPath,
+        "--method", "org.a11y.atspi.Accessible.GetState",
+      ],
+      { timeout: 5000 },
+    );
+    // Parse bitmask — same as platform adapter
+    const match = stdout.match(/\[(?:uint32\s+)?(\d+),\s*(\d+)\]/);
+    if (match) {
+      const low = parseInt(match[1], 10) >>> 0;
+      const high = parseInt(match[2], 10) >>> 0;
+      const STATE_BITS: Record<number, string> = {
+        8: "expandable", 9: "expanded", 11: "focused",
+        22: "selected", 23: "sensitive",
+      };
+      for (const [bit, name] of Object.entries(STATE_BITS)) {
+        const bitNum = parseInt(bit, 10);
+        if (bitNum < 32) {
+          if (low & (1 << bitNum)) states.add(name);
+        } else {
+          if (high & (1 << (bitNum - 32))) states.add(name);
+        }
+      }
+    }
+  } catch {
+    // Ignore
+  }
+
+  return states;
+}
+
+/**
+ * Try to select a child via the Selection interface on its parent.
+ */
+async function atspiSelectChild(
+  ref: LinuxNativeRef,
+): Promise<boolean> {
+  if (ref.accessible && typeof ref.accessible === "object") {
+    try {
+      const acc = ref.accessible as any;
+      const parent = acc.get_parent?.();
+      if (parent) {
+        const selIface = parent.get_selection_iface?.();
+        if (selIface) {
+          const idx = acc.get_index_in_parent?.();
+          if (idx >= 0) return selIface.select_child(idx);
+        }
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  if (!ref.busName || !ref.objectPath) return false;
+
+  try {
+    // Get the parent ref
+    const { stdout: parentOutput } = await execFileAsync(
+      "gdbus",
+      [
+        "call", "--session",
+        "--dest", ref.busName,
+        "--object-path", ref.objectPath,
+        "--method", "org.freedesktop.DBus.Properties.Get",
+        "org.a11y.atspi.Accessible", "Parent",
+      ],
+      { timeout: 5000 },
+    );
+
+    const parentMatch = parentOutput.match(/'([^']+)',\s*'([^']+)'/);
+    if (!parentMatch) return false;
+
+    const parentBus = parentMatch[1];
+    const parentPath = parentMatch[2];
+
+    // Get our index among siblings
+    const { stdout: indexOutput } = await execFileAsync(
+      "gdbus",
+      [
+        "call", "--session",
+        "--dest", ref.busName,
+        "--object-path", ref.objectPath,
+        "--method", "org.a11y.atspi.Accessible.GetIndexInParent",
+      ],
+      { timeout: 5000 },
+    );
+
+    const indexMatch = indexOutput.match(/\((\d+),?\)/);
+    if (!indexMatch) return false;
+
+    const index = parseInt(indexMatch[1], 10);
+
+    // Try Selection.SelectChild on the parent
+    await execFileAsync(
+      "gdbus",
+      [
+        "call", "--session",
+        "--dest", parentBus,
+        "--object-path", parentPath,
+        "--method", "org.a11y.atspi.Selection.SelectChild",
+        String(index),
+      ],
+      { timeout: 5000 },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // App launching helpers
 // ---------------------------------------------------------------------------
 
@@ -576,14 +879,14 @@ function fuzzyMatch(
 // ---------------------------------------------------------------------------
 
 export class LinuxActionHandler implements ActionHandler {
-  async execute(
+  async action(
     nativeRef: unknown,
-    action: string,
+    actionName: string,
     params: Record<string, unknown>,
   ): Promise<ActionResult> {
     const ref = (nativeRef as LinuxNativeRef | null) ?? {};
 
-    switch (action) {
+    switch (actionName) {
       case "click":
         return this._click(ref);
       case "toggle":
@@ -618,12 +921,12 @@ export class LinuxActionHandler implements ActionHandler {
         return {
           success: false,
           message: "",
-          error: `Action '${action}' not implemented for Linux`,
+          error: `Action '${actionName}' not implemented for Linux`,
         };
     }
   }
 
-  async pressKeys(combo: string): Promise<ActionResult> {
+  async press(combo: string): Promise<ActionResult> {
     try {
       await sendKeyCombo(combo);
       return { success: true, message: `Pressed ${combo}` };
@@ -636,7 +939,7 @@ export class LinuxActionHandler implements ActionHandler {
     }
   }
 
-  async launchApp(name: string): Promise<ActionResult> {
+  async openApp(name: string): Promise<ActionResult> {
     if (!name || !name.trim()) {
       return {
         success: false,
@@ -777,7 +1080,22 @@ export class LinuxActionHandler implements ActionHandler {
     text: string,
   ): Promise<ActionResult> {
     try {
-      // Focus the element first
+      // Strategy 1: EditableText interface (most reliable — direct text insertion)
+      if (await atspiHasEditableText(ref)) {
+        try {
+          const charCount = await atspiGetCharacterCount(ref);
+          if (charCount > 0) {
+            await atspiDeleteText(ref, 0, charCount);
+          }
+          if (await atspiInsertText(ref, 0, text)) {
+            return { success: true, message: `Typed: ${text}` };
+          }
+        } catch {
+          // Fall through to keyboard input
+        }
+      }
+
+      // Strategy 2: Focus + keyboard input
       await atspiGrabFocus(ref);
       await new Promise((r) => setTimeout(r, 50));
 
@@ -815,11 +1133,32 @@ export class LinuxActionHandler implements ActionHandler {
       }
     }
 
+    // Try EditableText interface
+    if (await atspiHasEditableText(ref)) {
+      try {
+        const charCount = await atspiGetCharacterCount(ref);
+        if (charCount > 0) {
+          await atspiDeleteText(ref, 0, charCount);
+        }
+        if (await atspiInsertText(ref, 0, text)) {
+          return { success: true, message: `Set value to: ${text}` };
+        }
+      } catch {
+        // Fall through
+      }
+    }
+
     // Fallback: type
     return this._type(ref, text);
   }
 
   private async _expand(ref: LinuxNativeRef): Promise<ActionResult> {
+    // Check if already expanded
+    const states = await atspiGetStates(ref);
+    if (states.has("expanded")) {
+      return { success: true, message: "Already expanded" };
+    }
+
     if (await atspiDoAction(ref, "expand or contract")) {
       return { success: true, message: "Expanded" };
     }
@@ -837,6 +1176,12 @@ export class LinuxActionHandler implements ActionHandler {
   }
 
   private async _collapse(ref: LinuxNativeRef): Promise<ActionResult> {
+    // Check if already collapsed
+    const states = await atspiGetStates(ref);
+    if (!states.has("expanded")) {
+      return { success: true, message: "Already collapsed" };
+    }
+
     if (await atspiDoAction(ref, "expand or contract")) {
       return { success: true, message: "Collapsed" };
     }
@@ -854,6 +1199,12 @@ export class LinuxActionHandler implements ActionHandler {
   }
 
   private async _select(ref: LinuxNativeRef): Promise<ActionResult> {
+    // Try Selection interface on the parent (e.g., list selects child)
+    if (await atspiSelectChild(ref)) {
+      return { success: true, message: "Selected" };
+    }
+
+    // Try AT-SPI click action (works for tabs, menu items, list items)
     if (
       (await atspiDoAction(ref, "click")) ||
       (await atspiDoAction(ref, "activate"))

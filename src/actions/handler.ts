@@ -13,13 +13,13 @@ import type { ActionResult } from "../types.js";
  * (click, type, toggle, etc.) into native API calls.
  */
 export interface ActionHandler {
-  execute(
+  action(
     nativeRef: unknown,
-    action: string,
+    actionName: string,
     params: Record<string, unknown>,
   ): Promise<ActionResult>;
 
-  pressKeys(combo: string): Promise<ActionResult>;
+  press(combo: string): Promise<ActionResult>;
 
-  launchApp(name: string): Promise<ActionResult>;
+  openApp(name: string): Promise<ActionResult>;
 }

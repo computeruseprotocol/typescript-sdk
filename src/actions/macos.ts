@@ -315,6 +315,11 @@ function getElementCenter(ref: MacosNativeRef): { x: number; y: number } | null 
 }
 
 // AX actions via JXA
+//
+// Path navigation: path[0] is the window index (via AXWindows), and
+// subsequent indices navigate via AXChildren. This matches the tree
+// capture helper which records [windowIndex, childIdx, childIdx, ...].
+
 async function axPerformAction(ref: MacosNativeRef, actionName: string): Promise<boolean> {
   if (!ref.pid || !ref.path) return false;
   try {
@@ -324,13 +329,14 @@ async function axPerformAction(ref: MacosNativeRef, actionName: string): Promise
       const app = $.AXUIElementCreateApplication(${ref.pid});
       let el = app;
       const path = ${pathStr};
-      for (const idx of path) {
+      for (let i = 0; i < path.length; i++) {
+        const attr = (i === 0) ? 'AXWindows' : 'AXChildren';
         const childrenRef = Ref();
-        const err = $.AXUIElementCopyAttributeValue(el, 'AXChildren', childrenRef);
+        const err = $.AXUIElementCopyAttributeValue(el, attr, childrenRef);
         if (err !== 0) { "fail"; }
         const children = ObjC.unwrap(childrenRef[0]);
-        if (!children || idx >= children.length) { "fail"; }
-        el = children[idx];
+        if (!children || path[i] >= children.length) { "fail"; }
+        el = children[path[i]];
       }
       const err2 = $.AXUIElementPerformAction(el, '${actionName}');
       err2 === 0 ? "ok" : "fail";
@@ -352,13 +358,14 @@ async function axSetAttribute(ref: MacosNativeRef, attr: string, value: string):
       const app = $.AXUIElementCreateApplication(${ref.pid});
       let el = app;
       const path = ${pathStr};
-      for (const idx of path) {
+      for (let i = 0; i < path.length; i++) {
+        const attr = (i === 0) ? 'AXWindows' : 'AXChildren';
         const childrenRef = Ref();
-        const err = $.AXUIElementCopyAttributeValue(el, 'AXChildren', childrenRef);
+        const err = $.AXUIElementCopyAttributeValue(el, attr, childrenRef);
         if (err !== 0) { "fail"; }
         const children = ObjC.unwrap(childrenRef[0]);
-        if (!children || idx >= children.length) { "fail"; }
-        el = children[idx];
+        if (!children || path[i] >= children.length) { "fail"; }
+        el = children[path[i]];
       }
       const err2 = $.AXUIElementSetAttributeValue(el, '${attr}', $('${escapedValue}'));
       err2 === 0 ? "ok" : "fail";
@@ -488,14 +495,14 @@ function fuzzyMatch(
 // ---------------------------------------------------------------------------
 
 export class MacosActionHandler implements ActionHandler {
-  async execute(
+  async action(
     nativeRef: unknown,
-    action: string,
+    actionName: string,
     params: Record<string, unknown>,
   ): Promise<ActionResult> {
     const ref = nativeRef as MacosNativeRef | null;
 
-    switch (action) {
+    switch (actionName) {
       case "click":
         return this._click(ref);
       case "toggle":
@@ -530,12 +537,12 @@ export class MacosActionHandler implements ActionHandler {
         return {
           success: false,
           message: "",
-          error: `Action '${action}' not implemented for macOS`,
+          error: `Action '${actionName}' not implemented for macOS`,
         };
     }
   }
 
-  async pressKeys(combo: string): Promise<ActionResult> {
+  async press(combo: string): Promise<ActionResult> {
     try {
       const [modNames, keyNames] = parseCombo(combo);
 
@@ -579,7 +586,7 @@ export class MacosActionHandler implements ActionHandler {
     }
   }
 
-  async launchApp(name: string): Promise<ActionResult> {
+  async openApp(name: string): Promise<ActionResult> {
     if (!name || !name.trim()) {
       return {
         success: false,

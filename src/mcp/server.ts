@@ -35,11 +35,11 @@ async function getSession(): Promise<Session> {
 // ---------------------------------------------------------------------------
 
 server.tool(
-  "get_foreground",
+  "snapshot",
   `Capture the foreground (active) window's accessibility tree.
 
 Returns a structured text representation where each UI element has an ID
-(e.g., 'e14') that can be used with execute_action. The format shows:
+(e.g., 'e14') that can be used with the action tool. The format shows:
 
     [id] role "name" @x,y wxh {states} [actions] val="value"
 
@@ -53,7 +53,7 @@ After executing any action, you MUST call this again for fresh IDs.`,
   {},
   async () => {
     const session = await getSession();
-    const result = await session.capture({
+    const result = await session.snapshot({
       scope: "foreground",
       maxDepth: 999,
       compact: true,
@@ -64,7 +64,7 @@ After executing any action, you MUST call this again for fresh IDs.`,
 );
 
 server.tool(
-  "get_tree",
+  "snapshot_app",
   `Capture a specific app's window accessibility tree by title.
 
 Use this when you need to interact with a window that is NOT in the
@@ -77,7 +77,7 @@ Element IDs are ephemeral — only valid for THIS snapshot.`,
   { app: z.string().describe("Target app by window title (case-insensitive substring match)") },
   async ({ app }) => {
     const session = await getSession();
-    const result = await session.capture({
+    const result = await session.snapshot({
       scope: "full",
       app,
       maxDepth: 999,
@@ -89,7 +89,7 @@ Element IDs are ephemeral — only valid for THIS snapshot.`,
 );
 
 server.tool(
-  "get_desktop",
+  "snapshot_desktop",
   `Capture the desktop surface (icons, widgets, shortcuts).
 
 Use this to see and interact with desktop items. Falls back to a
@@ -99,7 +99,7 @@ Element IDs are ephemeral — only valid for THIS snapshot.`,
   {},
   async () => {
     const session = await getSession();
-    const result = await session.capture({
+    const result = await session.snapshot({
       scope: "desktop",
       maxDepth: 999,
       compact: true,
@@ -110,18 +110,18 @@ Element IDs are ephemeral — only valid for THIS snapshot.`,
 );
 
 server.tool(
-  "get_overview",
+  "overview",
   `List all open windows. Near-instant, no tree walking.
 
 Returns a lightweight window list showing app names, PIDs, and bounds.
 No element IDs are returned (no tree walking is performed).
 
 Use this to quickly discover what apps are open before targeting
-a specific one with get_tree(app='...').`,
+a specific one with snapshot_app(app='...').`,
   {},
   async () => {
     const session = await getSession();
-    const result = await session.capture({ scope: "overview", compact: true });
+    const result = await session.snapshot({ scope: "overview", compact: true });
     return { content: [{ type: "text", text: result as string }] };
   },
 );
@@ -131,10 +131,10 @@ a specific one with get_tree(app='...').`,
 // ---------------------------------------------------------------------------
 
 server.tool(
-  "execute_action",
+  "action",
   `Execute an action on a UI element or send a keyboard shortcut.
 
-IMPORTANT: Element IDs are only valid from the most recent tree capture.
+IMPORTANT: Element IDs are only valid from the most recent snapshot.
 After executing any action, re-capture for fresh IDs.
 
 Element actions (require element_id):
@@ -142,18 +142,18 @@ Element actions (require element_id):
     select, expand, collapse, scroll, increment, decrement, focus
 
 Keyboard shortcut (no element_id needed):
-    press_keys — pass combo in 'keys' (e.g., "ctrl+s", "enter")`,
+    press — pass combo in 'keys' (e.g., "ctrl+s", "enter")`,
   {
     action: z.string().describe("The action to perform"),
     element_id: z.string().optional().describe("Element ID from the tree (e.g., 'e14')"),
     value: z.string().optional().describe("Text for 'type' or 'setvalue' actions"),
     direction: z.string().optional().describe("Direction for 'scroll' (up/down/left/right)"),
-    keys: z.string().optional().describe("Key combination for 'press_keys' (e.g., 'ctrl+s')"),
+    keys: z.string().optional().describe("Key combination for 'press' (e.g., 'ctrl+s')"),
   },
   async ({ action, element_id, value, direction, keys }) => {
     const session = await getSession();
 
-    if (action === "press_keys") {
+    if (action === "press") {
       if (!keys) {
         return {
           content: [
@@ -162,13 +162,13 @@ Keyboard shortcut (no element_id needed):
               text: JSON.stringify({
                 success: false,
                 message: "",
-                error: "press_keys action requires the 'keys' parameter (e.g., keys='ctrl+s').",
+                error: "press action requires the 'keys' parameter (e.g., keys='ctrl+s').",
               }),
             },
           ],
         };
       }
-      const result = await session.pressKeys(keys);
+      const result = await session.press(keys);
       return {
         content: [
           { type: "text", text: JSON.stringify({ success: result.success, message: result.message, error: result.error }) },
@@ -195,7 +195,7 @@ Keyboard shortcut (no element_id needed):
     if (value !== undefined) params.value = value;
     if (direction !== undefined) params.direction = direction;
 
-    const result = await session.execute(element_id, action, params);
+    const result = await session.action(element_id, action, params);
     return {
       content: [
         { type: "text", text: JSON.stringify({ success: result.success, message: result.message, error: result.error }) },
@@ -205,23 +205,23 @@ Keyboard shortcut (no element_id needed):
 );
 
 // ---------------------------------------------------------------------------
-// Launch app tool
+// Open app tool
 // ---------------------------------------------------------------------------
 
 server.tool(
-  "launch_app",
-  `Launch an application by name.
+  "open_app",
+  `Open an application by name.
 
 Fuzzy-matches the name against installed apps on the system.
 Examples: "chrome" → Google Chrome, "code" → Visual Studio Code.
 
-After launching, use get_foreground() to capture the new app's UI tree.`,
+After opening, use snapshot() to capture the new app's UI tree.`,
   {
-    name: z.string().describe("Application name to launch (fuzzy matched)"),
+    name: z.string().describe("Application name to open (fuzzy matched)"),
   },
   async ({ name }) => {
     const session = await getSession();
-    const result = await session.launchApp(name);
+    const result = await session.openApp(name);
     return {
       content: [
         { type: "text", text: JSON.stringify({ success: result.success, message: result.message, error: result.error }) },
@@ -235,7 +235,7 @@ After launching, use get_foreground() to capture the new app's UI tree.`,
 // ---------------------------------------------------------------------------
 
 server.tool(
-  "find_element",
+  "find",
   `Search the last captured tree for elements matching criteria.
 
 Searches the FULL tree with semantic matching and relevance ranking.
@@ -272,7 +272,7 @@ Both modes can be combined: query + state="focused" narrows to focused elements.
     }
 
     const session = await getSession();
-    const matches = await session.findElements({ query, role, name, state });
+    const matches = await session.find({ query, role, name, state });
 
     if (matches.length === 0) {
       return {

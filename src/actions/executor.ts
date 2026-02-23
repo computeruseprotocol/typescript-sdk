@@ -18,7 +18,7 @@ export const VALID_ACTIONS = new Set([
   "focus",
   "increment",
   "longpress",
-  "press_keys",
+  "press",
   "rightclick",
   "scroll",
   "select",
@@ -72,30 +72,30 @@ export class ActionExecutor {
     this.refs = refs;
   }
 
-  async execute(
+  async action(
     elementId: string,
-    action: string,
+    actionName: string,
     params?: Record<string, unknown> | null,
   ): Promise<ActionResult> {
-    if (!VALID_ACTIONS.has(action)) {
+    if (!VALID_ACTIONS.has(actionName)) {
       return {
         success: false,
         message: "",
-        error: `Unknown action '${action}'. Valid: ${[...VALID_ACTIONS].sort().join(", ")}`,
+        error: `Unknown action '${actionName}'. Valid: ${[...VALID_ACTIONS].sort().join(", ")}`,
       };
     }
 
-    // press_keys does not require an element reference
-    if (action === "press_keys") {
+    // press does not require an element reference
+    if (actionName === "press") {
       const keys = (params ?? {}).keys as string | undefined;
       if (!keys) {
         return {
           success: false,
           message: "",
-          error: "Action 'press_keys' requires a 'keys' parameter",
+          error: "Action 'press' requires a 'keys' parameter",
         };
       }
-      return this.pressKeys(keys);
+      return this.press(keys);
     }
 
     if (!this.refs.has(elementId)) {
@@ -107,14 +107,14 @@ export class ActionExecutor {
     }
 
     // Validate required parameters
-    if ((action === "type" || action === "setvalue") && !((params ?? {}).value != null)) {
+    if ((actionName === "type" || actionName === "setvalue") && !((params ?? {}).value != null)) {
       return {
         success: false,
         message: "",
-        error: `Action '${action}' requires a 'value' parameter`,
+        error: `Action '${actionName}' requires a 'value' parameter`,
       };
     }
-    if (action === "scroll") {
+    if (actionName === "scroll") {
       const direction = (params ?? {}).direction;
       if (!["up", "down", "left", "right"].includes(direction as string)) {
         return {
@@ -128,25 +128,25 @@ export class ActionExecutor {
     const nativeRef = this.refs.get(elementId);
     try {
       const handler = await this.getHandler();
-      return await handler.execute(nativeRef, action, params ?? {});
+      return await handler.action(nativeRef, actionName, params ?? {});
     } catch (err) {
       return { success: false, message: "", error: String(err) };
     }
   }
 
-  async pressKeys(combo: string): Promise<ActionResult> {
+  async press(combo: string): Promise<ActionResult> {
     try {
       const handler = await this.getHandler();
-      return await handler.pressKeys(combo);
+      return await handler.press(combo);
     } catch (err) {
       return { success: false, message: "", error: String(err) };
     }
   }
 
-  async launchApp(name: string): Promise<ActionResult> {
+  async openApp(name: string): Promise<ActionResult> {
     try {
       const handler = await this.getHandler();
-      return await handler.launchApp(name);
+      return await handler.openApp(name);
     } catch (err) {
       return { success: false, message: "", error: String(err) };
     }

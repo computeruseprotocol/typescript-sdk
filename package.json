@@ -38,6 +38,7 @@
     "aria",
     "cup"
   ],
+  "author": "CUP Contributors <cup@computeruseprotocol.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
