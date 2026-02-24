@@ -15,12 +15,12 @@ const session = await Session.create(platform?);
 
 ---
 
-### session.capture()
+### session.snapshot()
 
 Capture the accessibility tree.
 
 ```typescript
-const result = await session.capture({
+const result = await session.snapshot({
     scope: "foreground",   // "overview" | "foreground" | "desktop" | "full"
     app: undefined,        // filter by window title (scope="full" only)
     maxDepth: 999,         // maximum tree depth
@@ -38,7 +38,7 @@ const result = await session.capture({
 | `desktop` | Desktop surface (icons, widgets) | Yes |
 | `full` | All windows | Yes |
 
-**Returns:** `{ compact: string }` or `{ envelope: CupEnvelope }`, depending on `compact`.
+**Returns:** `string` (compact text) or `CupEnvelope` (structured object), depending on `compact`.
 
 **Detail levels:**
 
@@ -50,19 +50,19 @@ const result = await session.capture({
 
 ---
 
-### session.execute()
+### session.action()
 
-Execute an action on an element from the last capture.
+Execute an action on an element from the last snapshot.
 
 ```typescript
-const result = await session.execute("e14", "click");
-const result = await session.execute("e5", "type", { value: "hello world" });
-const result = await session.execute("e9", "scroll", { direction: "down" });
+const result = await session.action("e14", "click");
+const result = await session.action("e5", "type", { value: "hello world" });
+const result = await session.action("e9", "scroll", { direction: "down" });
 ```
 
 **Parameters:**
-- `elementId` (string) — Element ID from the tree (e.g., `"e14"`). Only valid for the most recent capture.
-- `action` (string) — One of the canonical actions below.
+- `elementId` (string) — Element ID from the tree (e.g., `"e14"`). Only valid for the most recent snapshot.
+- `actionName` (string) — One of the canonical actions below.
 - `params` (object) — Action-specific parameters.
 
 **Canonical actions:**
@@ -97,14 +97,14 @@ interface ActionResult {
 
 ---
 
-### session.pressKeys()
+### session.press()
 
 Send a keyboard shortcut.
 
 ```typescript
-const result = await session.pressKeys("ctrl+s");
-const result = await session.pressKeys("alt+f4");
-const result = await session.pressKeys("enter");
+const result = await session.press("ctrl+s");
+const result = await session.press("alt+f4");
+const result = await session.press("enter");
 ```
 
 **Parameters:**
@@ -112,14 +112,14 @@ const result = await session.pressKeys("enter");
 
 ---
 
-### session.launchApp()
+### session.openApp()
 
-Launch an application by name with fuzzy matching.
+Open an application by name with fuzzy matching.
 
 ```typescript
-const result = await session.launchApp("chrome");     // → Google Chrome
-const result = await session.launchApp("code");       // → Visual Studio Code
-const result = await session.launchApp("notepad");    // → Notepad
+const result = await session.openApp("chrome");     // → Google Chrome
+const result = await session.openApp("code");       // → Visual Studio Code
+const result = await session.openApp("notepad");    // → Notepad
 ```
 
 **Parameters:**
@@ -129,14 +129,14 @@ const result = await session.launchApp("notepad");    // → Notepad
 
 ---
 
-### session.findElements()
+### session.find()
 
 Search the last captured tree without re-capturing.
 
 ```typescript
-const results = await session.findElements({ query: "play button" });
-const results = await session.findElements({ role: "textbox", state: "focused" });
-const results = await session.findElements({ name: "Submit" });
+const results = await session.find({ query: "play button" });
+const results = await session.find({ role: "textbox", state: "focused" });
+const results = await session.find({ name: "Submit" });
 ```
 
 **Parameters:**
@@ -150,16 +150,16 @@ const results = await session.findElements({ name: "Submit" });
 
 ---
 
-### session.batchExecute()
+### session.batch()
 
 Execute a sequence of actions, stopping on first failure.
 
 ```typescript
-const results = await session.batchExecute([
+const results = await session.batch([
     { element_id: "e3", action: "click" },
     { action: "wait", ms: 500 },
     { element_id: "e7", action: "type", value: "hello" },
-    { action: "press_keys", keys: "enter" },
+    { action: "press", keys: "enter" },
 ]);
 ```
 
@@ -171,7 +171,7 @@ const results = await session.batchExecute([
 | `element_id` | For element actions | Target element |
 | `value` | For `type`/`setvalue` | Text value |
 | `direction` | For `scroll` | Scroll direction |
-| `keys` | For `press_keys` | Key combination |
+| `keys` | For `press` | Key combination |
 | `ms` | For `wait` | Delay in ms (50-5000) |
 
 **Returns:** Array of `ActionResult` — stops at first failure.
@@ -180,7 +180,7 @@ const results = await session.batchExecute([
 
 ### session.screenshot()
 
-Capture a screenshot as a base64-encoded PNG string.
+Capture a screenshot as a PNG buffer.
 
 ```typescript
 const png = await session.screenshot();
@@ -190,7 +190,7 @@ const png = await session.screenshot({ x: 100, y: 200, w: 800, h: 600 });
 **Parameters:**
 - `region` (object | undefined) — Capture region `{ x, y, w, h }` in pixels. `undefined` for full primary monitor.
 
-**Returns:** `string` (base64-encoded PNG image data).
+**Returns:** `Buffer` (PNG image data).
 
 ---
 
@@ -199,35 +199,23 @@ const png = await session.screenshot({ x: 100, y: 200, w: 800, h: 600 });
 Thin wrappers around a default `Session` instance. Useful for quick scripting.
 
 ```typescript
-import {
-    getTree,
-    getForegroundTree,
-    getCompact,
-    getForegroundCompact,
-    getOverview,
-} from "computer-use-protocol";
-
-// Full tree as CUP envelope object
-const envelope = await getTree();
-
-// Foreground window as CUP envelope object
-const envelope = await getForegroundTree();
-
-// Full tree as compact text
-const text = await getCompact();
+import { snapshot, snapshotRaw, overview } from "computer-use-protocol";
 
 // Foreground window as compact text
-const text = await getForegroundCompact();
+const text = await snapshot();
+
+// Foreground window as CUP envelope object
+const envelope = await snapshotRaw();
 
 // Window list only (no tree walking)
-const text = await getOverview();
+const text = await overview();
 ```
 
 ---
 
 ## CUP Envelope Format
 
-The JSON envelope returned by `session.capture({ compact: false })`:
+The JSON envelope returned by `session.snapshot({ compact: false })`:
 
 ```json
 {
@@ -265,13 +253,13 @@ Each node in the tree:
 
 **Element actions:** `click`, `collapse`, `decrement`, `dismiss`, `doubleclick`, `expand`, `focus`, `increment`, `longpress`, `rightclick`, `scroll`, `select`, `setvalue`, `toggle`, `type`
 
-**Session-level actions:** `press_keys`
+**Session-level actions:** `press`
 
 ---
 
 ## Compact Format
 
-The text format returned by `session.capture({ compact: true })`. Optimized for LLM context windows (~75% smaller than JSON).
+The text format returned by `session.snapshot({ compact: true })`. Optimized for LLM context windows (~75% smaller than JSON).
 
 ```
 # CUP 0.1.0 | windows | 2560x1440
@@ -307,13 +295,13 @@ bun run src/mcp/cli.ts
 
 | Tool | Description |
 |------|-------------|
-| `get_foreground()` | Capture active window tree (compact) |
-| `get_tree(app)` | Capture specific app by title |
-| `get_overview()` | Window list only (near-instant) |
-| `get_desktop()` | Desktop surface (icons, widgets) |
-| `find_element(query, role, name, state)` | Search last tree |
-| `execute_action(action, element_id, ...)` | Execute action + return new tree |
-| `launch_app(name)` | Launch app by name |
+| `snapshot` | Capture active window tree (compact) |
+| `snapshot_app(app)` | Capture specific app by title |
+| `overview` | Window list only (near-instant) |
+| `snapshot_desktop` | Desktop surface (icons, widgets) |
+| `find(query, role, name, state)` | Search last tree |
+| `action(action, element_id, ...)` | Execute action on element or press keys |
+| `open_app(name)` | Open app by name |
 | `screenshot(region)` | Capture screenshot |
 
 ### Configuration

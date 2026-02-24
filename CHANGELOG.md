@@ -18,7 +18,7 @@ Initial release. TypeScript implementation of the [Computer Use Protocol](https:
 - **MCP server** (`cup-mcp`) for AI agent integration
 - **Semantic search engine** with fuzzy matching and role synonyms
 - **Viewport-aware pruning** that clips offscreen nodes
-- **Session API** with `capture()`, `execute()`, `pressKeys()`, `findElements()`, `batchExecute()`, and `screenshot()`
+- **Session API** with `snapshot()`, `action()`, `press()`, `find()`, `batch()`, and `screenshot()`
 - **CLI** (`cup`) for tree capture, JSON export, and compact output
 - **Dual build** — ESM and CommonJS with TypeScript declarations
 
