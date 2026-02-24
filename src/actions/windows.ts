@@ -584,7 +584,13 @@ export class WindowsActionHandler implements ActionHandler {
   }
 
   private async _type(hwnd: number, nodeIndex: number, text: string): Promise<ActionResult> {
-    // Focus the element first
+    // Fast path: try ValuePattern.SetValue (instant, lossless, no keyboard sim).
+    const setResult = await this._uiaAction(hwnd, nodeIndex, "setvalue", { value: text });
+    if (setResult.success) {
+      return { success: true, message: `Typed: ${text}` };
+    }
+
+    // Fallback: keyboard simulation via Unicode SendInput.
     const focusResult = await this._uiaAction(hwnd, nodeIndex, "focus", {});
     if (!focusResult.success) {
       return { success: false, message: "", error: `Failed to focus element for typing: ${focusResult.error}` };
