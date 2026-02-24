@@ -5,7 +5,7 @@
  *
  * Quick start:
  *
- *   import { Session, snapshot, overview } from "computer-use-protocol";
+ *   import { Session, snapshot, overview } from "computeruseprotocol";
  *
  *   // Session is the primary API — capture + actions
  *   const session = await Session.create();

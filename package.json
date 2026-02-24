@@ -1,5 +1,5 @@
 {
-  "name": "computer-use-protocol",
+  "name": "computeruseprotocol",
   "version": "0.1.0",
   "description": "TypeScript SDK for the Computer Use Protocol — universal cross-platform UI accessibility",
   "type": "module",

@@ -5,7 +5,7 @@
 The primary interface for CUP. Captures accessibility trees and executes actions.
 
 ```typescript
-import { Session } from "computer-use-protocol";
+import { Session } from "computeruseprotocol";
 
 const session = await Session.create(platform?);
 ```
@@ -199,7 +199,7 @@ const png = await session.screenshot({ x: 100, y: 200, w: 800, h: 600 });
 Thin wrappers around a default `Session` instance. Useful for quick scripting.
 
 ```typescript
-import { snapshot, snapshotRaw, overview } from "computer-use-protocol";
+import { snapshot, snapshotRaw, overview } from "computeruseprotocol";
 
 // Foreground window as compact text
 const text = await snapshot();
@@ -326,7 +326,7 @@ Add to your MCP client config (e.g., `.mcp.json` for Claude Code):
 Interface for adding new platform support.
 
 ```typescript
-import type { PlatformAdapter } from "computer-use-protocol";
+import type { PlatformAdapter } from "computeruseprotocol";
 
 class AndroidAdapter implements PlatformAdapter {
     platformName = "android";

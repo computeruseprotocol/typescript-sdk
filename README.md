@@ -11,7 +11,7 @@
 <br>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/computer-use-protocol"><img src="https://img.shields.io/npm/v/computer-use-protocol?style=for-the-badge&color=FF6F61&labelColor=000000" alt="npm"></a>
+  <a href="https://www.npmjs.com/package/computeruseprotocol"><img src="https://img.shields.io/npm/v/computeruseprotocol?style=for-the-badge&color=FF6F61&labelColor=000000" alt="npm"></a>
   <a href="https://github.com/computeruseprotocol/typescript-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-0cc0df?style=for-the-badge&labelColor=000000" alt="MIT License"></a>
   <a href="https://github.com/computeruseprotocol/computeruseprotocol"><img src="https://img.shields.io/badge/Spec-computer--use--protocol-7ed957?style=for-the-badge&labelColor=000000" alt="Spec"></a>
 </p>
@@ -22,16 +22,16 @@ The official TypeScript SDK for the [Computer Use Protocol (CUP)](https://github
 
 ```bash
 # npm
-npm install computer-use-protocol
+npm install computeruseprotocol
 
 # bun
-bun add computer-use-protocol
+bun add computeruseprotocol
 ```
 
 ## Quick start
 
 ```typescript
-import { snapshot, snapshotRaw, overview } from "computer-use-protocol";
+import { snapshot, snapshotRaw, overview } from "computeruseprotocol";
 
 // Capture the foreground window's accessibility tree
 const text = await snapshot();
@@ -63,7 +63,7 @@ Output:
 ### Session API
 
 ```typescript
-import { Session } from "computer-use-protocol";
+import { Session } from "computeruseprotocol";
 
 const session = await Session.create();
 
