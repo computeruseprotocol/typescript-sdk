@@ -70,7 +70,6 @@ export type Role =
   | "img"
   | "link"
   | "list"
-  | "listbox"
   | "listitem"
   | "log"
   | "main"

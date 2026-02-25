@@ -162,39 +162,60 @@ const CDP_ROLE_MAP: Record<string, string> = {
   radioButton: "radio",
   scrollBar: "scrollbar",
   Summary: "button",
-  Meter: "progressbar",
+  Meter: "progressbar",  // meter → progressbar (both show value in range)
   Output: "status",
-  Figure: "figure",
+  Figure: "group",
   Canvas: "img",
   Video: "generic",
   Audio: "generic",
   Section: "generic",
 };
 
+// Canonical CUP roles (59) — matches the schema enum exactly.
+// Non-schema ARIA roles are mapped to CUP equivalents below.
 const CUP_ROLES = new Set([
-  "alert", "alertdialog", "application", "article", "banner", "button",
+  "alert", "alertdialog", "application", "banner", "button",
   "cell", "checkbox", "columnheader", "combobox", "complementary",
-  "contentinfo", "definition", "dialog", "directory", "document", "feed",
-  "figure", "form", "generic", "grid", "gridcell", "group", "heading",
-  "img", "link", "list", "listbox", "listitem", "log", "main", "marquee",
-  "math", "menu", "menubar", "menuitem", "menuitemcheckbox", "menuitemradio",
-  "meter", "navigation", "none", "note", "option", "pane", "presentation",
-  "progressbar", "radio", "radiogroup", "region", "row", "rowgroup",
-  "rowheader", "scrollbar", "search", "searchbox", "separator", "slider",
-  "spinbutton", "status", "switch", "tab", "table", "tablist", "tabpanel",
-  "term", "text", "textbox", "timer", "toolbar", "tooltip", "tree",
-  "treegrid", "treeitem", "window",
+  "contentinfo", "dialog", "document", "form", "generic", "grid",
+  "group", "heading", "img", "link", "list", "listitem", "log",
+  "main", "marquee", "menu", "menubar", "menuitem", "menuitemcheckbox",
+  "menuitemradio", "navigation", "none", "option", "progressbar", "radio",
+  "region", "row", "rowheader", "scrollbar", "search", "searchbox",
+  "separator", "slider", "spinbutton", "status", "switch", "tab", "table",
+  "tablist", "tabpanel", "text", "textbox", "timer", "titlebar", "toolbar",
+  "tooltip", "tree", "treeitem", "window",
 ]);
+
+// Non-schema ARIA roles → closest CUP equivalent.
+// CDP sometimes returns these as role names directly (lowercase).
+const NON_SCHEMA_ROLE_MAP: Record<string, string> = {
+  article: "region",
+  definition: "text",
+  directory: "list",
+  feed: "list",
+  figure: "group",
+  gridcell: "cell",
+  listbox: "list",
+  math: "generic",
+  meter: "progressbar",
+  note: "region",
+  pane: "generic",
+  presentation: "none",
+  radiogroup: "group",
+  rowgroup: "group",
+  term: "text",
+  treegrid: "grid",
+};
 
 const TEXT_INPUT_ROLES = new Set(["textbox", "searchbox", "combobox", "spinbutton"]);
 const CLICKABLE_ROLES = new Set([
   "button", "link", "menuitem", "menuitemcheckbox", "menuitemradio", "option", "tab",
 ]);
 const SELECTABLE_ROLES = new Set([
-  "option", "tab", "treeitem", "listitem", "row", "cell", "gridcell",
+  "option", "tab", "treeitem", "listitem", "row", "cell",
 ]);
 const TOGGLE_ROLES = new Set(["checkbox", "switch", "menuitemcheckbox"]);
-const RANGE_ROLES = new Set(["slider", "spinbutton", "progressbar", "scrollbar", "meter"]);
+const RANGE_ROLES = new Set(["slider", "spinbutton", "progressbar", "scrollbar"]);
 
 function mapCdpRole(cdpRole: string, name: string): string | null {
   if (SKIP_ROLES.has(cdpRole)) return null;
@@ -207,6 +228,10 @@ function mapCdpRole(cdpRole: string, name: string): string | null {
 
   const lower = cdpRole.toLowerCase();
   if (CUP_ROLES.has(lower)) return lower;
+
+  // Map non-schema ARIA roles to CUP equivalents
+  const mapped = NON_SCHEMA_ROLE_MAP[lower];
+  if (mapped) return mapped;
 
   return "generic";
 }
@@ -349,7 +374,7 @@ function axValue(field: unknown): unknown {
 
 const VALUE_NODE_ROLES = new Set([
   "textbox", "searchbox", "combobox", "spinbutton", "slider",
-  "progressbar", "meter", "document",
+  "progressbar", "document",
 ]);
 
 function buildCupNode(
