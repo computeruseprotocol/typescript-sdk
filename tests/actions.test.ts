@@ -78,7 +78,7 @@ describe("VALID_ACTIONS", () => {
   it("contains all canonical actions", () => {
     const expected = [
       "click", "collapse", "decrement", "dismiss", "doubleclick",
-      "expand", "focus", "increment", "longpress", "press_keys",
+      "expand", "focus", "increment", "longpress", "press",
       "rightclick", "scroll", "select", "setvalue", "toggle", "type",
     ];
     for (const action of expected) {
@@ -95,35 +95,35 @@ describe("MacosActionHandler", () => {
   it("returns error for unknown action", async () => {
     const { MacosActionHandler } = await import("../src/actions/macos.js");
     const handler = new MacosActionHandler();
-    const result = await handler.execute(null, "fly", {});
+    const result = await handler.action(null, "fly", {});
     expect(result.success).toBe(false);
     expect(result.error?.toLowerCase()).toContain("not implemented");
   });
 
-  it("pressKeys works on macOS", async () => {
+  it("press works on macOS", async () => {
     if (process.platform !== "darwin") return; // skip on non-macOS
 
     const { MacosActionHandler } = await import("../src/actions/macos.js");
     const handler = new MacosActionHandler();
-    const result = await handler.pressKeys("escape");
+    const result = await handler.press("escape");
     expect(result.success).toBe(true);
     expect(result.message).toContain("Pressed");
   }, 60000); // First run compiles the Swift helper (~30s)
 
-  it("launchApp rejects empty name", async () => {
+  it("openApp rejects empty name", async () => {
     const { MacosActionHandler } = await import("../src/actions/macos.js");
     const handler = new MacosActionHandler();
-    const result = await handler.launchApp("");
+    const result = await handler.openApp("");
     expect(result.success).toBe(false);
     expect(result.error?.toLowerCase()).toContain("empty");
   });
 
-  it("launchApp rejects nonexistent app", async () => {
+  it("openApp rejects nonexistent app", async () => {
     if (process.platform !== "darwin") return; // skip on non-macOS
 
     const { MacosActionHandler } = await import("../src/actions/macos.js");
     const handler = new MacosActionHandler();
-    const result = await handler.launchApp("zzzznonexistentapp99999");
+    const result = await handler.openApp("zzzznonexistentapp99999");
     expect(result.success).toBe(false);
     expect(result.error?.toLowerCase()).toContain("no installed app");
   });

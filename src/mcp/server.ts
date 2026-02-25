@@ -12,10 +12,37 @@ import { z } from "zod";
 import { Session } from "../index.js";
 import { formatLine } from "../format.js";
 
-export const server = new McpServer({
-  name: "cup",
-  version: "0.1.0",
-});
+export const server = new McpServer(
+  { name: "cup", version: "0.1.0" },
+  {
+    instructions:
+      "CUP (Computer Use Protocol) gives you access to the UI accessibility " +
+      "tree of the user's computer.\n\n" +
+      "WORKFLOW — follow this pattern:\n" +
+      "1. snapshot to capture the active window's UI\n" +
+      "2. find to locate specific elements (PREFERRED over re-capturing)\n" +
+      "3. action to interact (click, type, press, etc.)\n" +
+      "4. Re-capture ONLY after actions change the UI\n\n" +
+      "TOOLS:\n" +
+      "- snapshot() — active window tree + window list (most common)\n" +
+      "- snapshot_app(app) — specific app by title (when not in foreground)\n" +
+      "- overview() — just the window list, near-instant\n" +
+      "- snapshot_desktop() — desktop icons and widgets\n" +
+      "- find(role/name/state) — search last tree without re-capturing\n" +
+      "- action(action, ...) — interact with elements or press keys\n" +
+      "- open_app(name) — open an app by name with fuzzy matching\n" +
+      "- screenshot(region) — visual context when tree isn't enough\n\n" +
+      "IMPORTANT — minimize token usage:\n" +
+      "- Use find(name=...) to locate elements — NOT repeated tree captures\n" +
+      "- Use overview() to discover what apps are open\n" +
+      "- Use snapshot_app(app='...') to target a specific app\n" +
+      "- snapshot() is your default starting point\n\n" +
+      "Element IDs (e.g., 'e14') are ephemeral — only valid for the most " +
+      "recent tree snapshot. After any action, re-capture before using IDs.\n\n" +
+      "Use action(action='press', keys='ctrl+s') for keyboard shortcuts.\n\n" +
+      "Use screenshot when you need visual context (colors, images, layout).",
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Session state

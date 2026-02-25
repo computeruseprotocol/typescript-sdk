@@ -45,7 +45,7 @@ export interface AppInfo {
 }
 
 // ---------------------------------------------------------------------------
-// Roles (54 canonical ARIA-derived roles)
+// Roles (59 canonical ARIA-derived roles)
 // ---------------------------------------------------------------------------
 
 export type Role =
@@ -133,7 +133,7 @@ export type State =
   | "selected";
 
 // ---------------------------------------------------------------------------
-// Actions (15 element-level canonical actions)
+// Actions (15 element-level canonical actions + press for global keys)
 // ---------------------------------------------------------------------------
 
 export type Action =
@@ -146,6 +146,7 @@ export type Action =
   | "focus"
   | "increment"
   | "longpress"
+  | "press"
   | "rightclick"
   | "scroll"
   | "select"
