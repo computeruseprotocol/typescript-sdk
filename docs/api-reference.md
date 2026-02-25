@@ -25,7 +25,7 @@ const result = await session.snapshot({
     app: undefined,        // filter by window title (scope="full" only)
     maxDepth: 999,         // maximum tree depth
     compact: true,         // true → compact text, false → CUP envelope object
-    detail: "standard",    // "standard" | "minimal" | "full"
+    detail: "compact",     // "compact" | "full"
 });
 ```
 
@@ -44,8 +44,7 @@ const result = await session.snapshot({
 
 | Level | Behavior |
 |-------|----------|
-| `standard` | Prunes unnamed generics, empty text, decorative images (~75% smaller) |
-| `minimal` | Keep only interactive nodes and their ancestors |
+| `compact` | Prunes unnamed generics, empty text, decorative images (~75% smaller) |
 | `full` | No pruning — every node included |
 
 ---
@@ -266,14 +265,14 @@ The text format returned by `session.snapshot({ compact: true })`. Optimized for
 # app: Discord
 # 87 nodes (353 before pruning)
 
-[e0] window "Discord" @509,62 1992x1274
-    [e1] document "General" @509,62 1992x1274 {readonly}
-        [e2] button "Back" @518,66 26x24 [click]
-        [e7] tree "Servers" @509,94 72x1242
-            [e8] treeitem "Lechownia" @513,190 64x48 {selected} [click,select]
+[e0] win "Discord" 509,62 1992x1274
+  [e1] doc "General" 509,62 1992x1274 {ro}
+    [e2] btn "Back" 518,66 26x24 [clk]
+    [e7] tre "Servers" 509,94 72x1242
+      [e8] ti "Lechownia" 513,190 64x48 {sel} [clk,sel]
 ```
 
-Line format: `[id] role "name" @x,y wxh {states} [actions] val="value" (attrs)`
+Line format: `[id] role "name" x,y wxh {states} [actions] val="value" (attrs)`
 
 Full spec: [compact.md](https://github.com/computeruseprotocol/computer-use-protocol/blob/main/schema/compact.md)
 

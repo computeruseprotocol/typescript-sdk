@@ -137,7 +137,7 @@ describe("pruneTree", () => {
         ],
       }),
     ];
-    const pruned = pruneTree(tree, { detail: "standard" });
+    const pruned = pruneTree(tree, { detail: "compact" });
     // The unnamed generic should be hoisted, so button is direct child of window
     expect(pruned[0].children?.[0]?.role).toBe("button");
     expect(pruned[0].children?.[0]?.id).toBe("e2");
@@ -155,7 +155,7 @@ describe("pruneTree", () => {
         ],
       }),
     ];
-    const pruned = pruneTree(tree, { detail: "standard" });
+    const pruned = pruneTree(tree, { detail: "compact" });
     expect(pruned[0].children).toHaveLength(1);
     expect(pruned[0].children?.[0]?.role).toBe("button");
   });
@@ -169,7 +169,7 @@ describe("pruneTree", () => {
         children: [makeNode({ id: "e1", role: "img", name: "" })],
       }),
     ];
-    const pruned = pruneTree(tree, { detail: "standard" });
+    const pruned = pruneTree(tree, { detail: "compact" });
     expect(pruned[0].children ?? []).toHaveLength(0);
   });
 
@@ -182,7 +182,7 @@ describe("pruneTree", () => {
         children: [makeNode({ id: "e1", role: "text", name: "" })],
       }),
     ];
-    const pruned = pruneTree(tree, { detail: "standard" });
+    const pruned = pruneTree(tree, { detail: "compact" });
     expect(pruned[0].children ?? []).toHaveLength(0);
   });
 
@@ -197,7 +197,7 @@ describe("pruneTree", () => {
         ],
       }),
     ];
-    const pruned = pruneTree(tree, { detail: "standard" });
+    const pruned = pruneTree(tree, { detail: "compact" });
     expect(pruned[0].children ?? []).toHaveLength(0);
   });
 
@@ -218,27 +218,10 @@ describe("pruneTree", () => {
         ],
       }),
     ];
-    const pruned = pruneTree(tree, { detail: "standard" });
+    const pruned = pruneTree(tree, { detail: "compact" });
     expect(pruned[0].children).toHaveLength(1);
   });
 
-  it("minimal keeps only interactive + ancestors", () => {
-    const tree = [
-      makeNode({
-        id: "e0",
-        role: "window",
-        name: "Win",
-        children: [
-          makeNode({ id: "e1", role: "text", name: "Label" }),
-          makeNode({ id: "e2", role: "button", name: "Click", actions: ["click"] }),
-        ],
-      }),
-    ];
-    const pruned = pruneTree(tree, { detail: "minimal" });
-    expect(pruned).toHaveLength(1);
-    expect(pruned[0].children).toHaveLength(1);
-    expect(pruned[0].children?.[0]?.role).toBe("button");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -272,25 +255,32 @@ describe("serializeOverview", () => {
 describe("formatLine", () => {
   it("formats basic node", () => {
     const result = formatLine(makeNode({ id: "e14", role: "button", name: "Submit" }));
-    expect(result).toBe('[e14] button "Submit"');
+    expect(result).toBe('[e14] btn "Submit"');
   });
 
-  it("includes bounds", () => {
+  it("includes bounds for interactable nodes", () => {
+    const result = formatLine(
+      makeNode({ id: "e0", bounds: { x: 100, y: 50, w: 80, h: 30 }, actions: ["click"] }),
+    );
+    expect(result).toContain("100,50 80x30");
+  });
+
+  it("omits bounds for non-interactable nodes", () => {
     const result = formatLine(
       makeNode({ id: "e0", bounds: { x: 100, y: 50, w: 80, h: 30 } }),
     );
-    expect(result).toContain("@100,50 80x30");
+    expect(result).not.toContain("100,50");
   });
 
-  it("includes states", () => {
+  it("includes states with short codes", () => {
     const result = formatLine(makeNode({ id: "e0", states: ["disabled", "focused"] }));
-    expect(result).toContain("{disabled,focused}");
+    expect(result).toContain("{dis,foc}");
   });
 
-  it("includes actions (without focus)", () => {
+  it("includes actions with short codes (without focus)", () => {
     const result = formatLine(makeNode({ id: "e0", actions: ["click", "focus", "toggle"] }));
-    expect(result).toContain("[click,toggle]");
-    expect(result).not.toContain("focus");
+    expect(result).toContain("[clk,tog]");
+    expect(result).not.toContain("foc");
   });
 
   it("includes value for textbox", () => {
@@ -314,7 +304,7 @@ describe("serializeCompact", () => {
     const result = serializeCompact(env);
     expect(result).toContain("# CUP 0.1.0 | windows | 1920x1080");
     expect(result).toContain("# app: App");
-    expect(result).toContain('[e0] window "App"');
+    expect(result).toContain('[e0] win "App"');
   });
 
   it("includes window list when provided", () => {
@@ -368,7 +358,7 @@ describe("viewport clipping", () => {
         ],
       }),
     ];
-    const pruned = pruneTree(tree, { detail: "standard" });
+    const pruned = pruneTree(tree, { detail: "compact" });
     expect(pruned[0].children).toHaveLength(1);
     expect(pruned[0].children?.[0]?.name).toBe("Visible");
     expect(pruned[0]._clipped?.below).toBeGreaterThan(0);

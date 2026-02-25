@@ -84,7 +84,7 @@ After executing any action, you MUST call this again for fresh IDs.`,
       scope: "foreground",
       maxDepth: 999,
       compact: true,
-      detail: "standard",
+      detail: "compact",
     });
     return { content: [{ type: "text", text: result as string }] };
   },
@@ -109,7 +109,7 @@ Element IDs are ephemeral — only valid for THIS snapshot.`,
       app,
       maxDepth: 999,
       compact: true,
-      detail: "standard",
+      detail: "compact",
     });
     return { content: [{ type: "text", text: result as string }] };
   },
@@ -130,7 +130,7 @@ Element IDs are ephemeral — only valid for THIS snapshot.`,
       scope: "desktop",
       maxDepth: 999,
       compact: true,
-      detail: "standard",
+      detail: "compact",
     });
     return { content: [{ type: "text", text: result as string }] };
   },

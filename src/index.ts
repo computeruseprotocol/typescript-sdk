@@ -77,7 +77,7 @@ export class Session {
     const scope = options?.scope ?? "foreground";
     const maxDepth = options?.maxDepth ?? 999;
     const compact = options?.compact ?? true;
-    const detail = options?.detail ?? "standard";
+    const detail = options?.detail ?? "compact";
 
     const [sw, sh, scale] = await this.adapter.getScreenInfo();
 
@@ -442,7 +442,7 @@ export async function overview(): Promise<string> {
 // ---------------------------------------------------------------------------
 
 export { getAdapter, detectPlatform } from "./router.js";
-export { buildEnvelope, serializeCompact, serializeOverview, pruneTree, formatLine } from "./format.js";
+export { buildEnvelope, serializeCompact, serializeOverview, pruneTree, formatLine, ROLE_CODES, STATE_CODES, ACTION_CODES } from "./format.js";
 export { searchTree, resolveRoles, tokenize } from "./search.js";
 export { ActionExecutor, VALID_ACTIONS } from "./actions/executor.js";
 export { parseCombo } from "./actions/keys.js";

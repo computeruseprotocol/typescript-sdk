@@ -300,7 +300,7 @@ export interface CupEnvelope {
 
 export type Scope = "overview" | "foreground" | "desktop" | "full";
 
-export type Detail = "standard" | "minimal" | "full";
+export type Detail = "compact" | "full";
 
 // ---------------------------------------------------------------------------
 // Window metadata (internal, from adapters)

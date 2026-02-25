@@ -283,48 +283,18 @@ function pruneNode(
   return [pruned];
 }
 
-function pruneMinimalNode(node: CupNode): CupNode | null {
-  const children = node.children ?? [];
-  const keptChildren: CupNode[] = [];
-
-  for (const child of children) {
-    const pruned = pruneMinimalNode(child);
-    if (pruned) keptChildren.push(pruned);
-  }
-
-  if (hasMeaningfulActions(node) || keptChildren.length > 0) {
-    const pruned: CupNode = { ...node };
-    delete pruned.children;
-    if (keptChildren.length > 0) {
-      pruned.children = keptChildren;
-    }
-    return pruned;
-  }
-
-  return null;
-}
-
 export function pruneTree(
   tree: CupNode[],
   options?: { detail?: Detail; screen?: { w: number; h: number } | null },
 ): CupNode[] {
-  const detail = options?.detail ?? "standard";
+  const detail = options?.detail ?? "compact";
   const screen = options?.screen;
 
   if (detail === "full") {
     return structuredClone(tree);
   }
 
-  if (detail === "minimal") {
-    const result: CupNode[] = [];
-    for (const root of tree) {
-      const pruned = pruneMinimalNode(root);
-      if (pruned) result.push(pruned);
-    }
-    return result;
-  }
-
-  // "standard"
+  // "compact"
   let screenViewport: Rect | null = null;
   if (screen) {
     screenViewport = { x: 0, y: 0, w: screen.w, h: screen.h };
@@ -342,8 +312,113 @@ export function pruneTree(
 
 const VALUE_ROLES = new Set(["textbox", "searchbox", "combobox", "spinbutton", "slider"]);
 
+// ---------------------------------------------------------------------------
+// Vocabulary short codes — compact aliases for roles, states, and actions.
+// These reduce per-node token cost by ~50% on role/state/action strings.
+// ---------------------------------------------------------------------------
+
+export const ROLE_CODES: Record<string, string> = {
+  alert: "alrt",
+  alertdialog: "adlg",
+  application: "app",
+  banner: "bnr",
+  button: "btn",
+  cell: "cel",
+  checkbox: "chk",
+  columnheader: "colh",
+  combobox: "cmb",
+  complementary: "cmp",
+  contentinfo: "ci",
+  dialog: "dlg",
+  document: "doc",
+  form: "frm",
+  generic: "gen",
+  grid: "grd",
+  group: "grp",
+  heading: "hdg",
+  img: "img",
+  link: "lnk",
+  list: "lst",
+  listitem: "li",
+  log: "log",
+  main: "main",
+  marquee: "mrq",
+  menu: "mnu",
+  menubar: "mnub",
+  menuitem: "mi",
+  menuitemcheckbox: "mic",
+  menuitemradio: "mir",
+  navigation: "nav",
+  none: "none",
+  option: "opt",
+  progressbar: "pbar",
+  radio: "rad",
+  region: "rgn",
+  row: "row",
+  rowheader: "rowh",
+  scrollbar: "sb",
+  search: "srch",
+  searchbox: "sbx",
+  separator: "sep",
+  slider: "sld",
+  spinbutton: "spn",
+  status: "sts",
+  switch: "sw",
+  tab: "tab",
+  table: "tbl",
+  tablist: "tabs",
+  tabpanel: "tpnl",
+  text: "txt",
+  textbox: "tbx",
+  timer: "tmr",
+  titlebar: "ttlb",
+  toolbar: "tlbr",
+  tooltip: "ttp",
+  tree: "tre",
+  treeitem: "ti",
+  window: "win",
+};
+
+export const STATE_CODES: Record<string, string> = {
+  busy: "bsy",
+  checked: "chk",
+  collapsed: "col",
+  disabled: "dis",
+  editable: "edt",
+  expanded: "exp",
+  focused: "foc",
+  hidden: "hid",
+  mixed: "mix",
+  modal: "mod",
+  multiselectable: "msel",
+  offscreen: "off",
+  pressed: "prs",
+  readonly: "ro",
+  required: "req",
+  selected: "sel",
+};
+
+export const ACTION_CODES: Record<string, string> = {
+  click: "clk",
+  collapse: "col",
+  decrement: "dec",
+  dismiss: "dsm",
+  doubleclick: "dbl",
+  expand: "exp",
+  focus: "foc",
+  increment: "inc",
+  longpress: "lp",
+  rightclick: "rclk",
+  scroll: "scr",
+  select: "sel",
+  setvalue: "sv",
+  toggle: "tog",
+  type: "typ",
+};
+
 export function formatLine(node: CupNode): string {
-  const parts = [`[${node.id}]`, node.role];
+  const role = node.role;
+  const parts = [`[${node.id}]`, ROLE_CODES[role] ?? role];
 
   const name = node.name || "";
   if (name) {
@@ -352,25 +427,29 @@ export function formatLine(node: CupNode): string {
     parts.push(`"${truncated}"`);
   }
 
+  // Actions (drop "focus" — it's noise)
+  const actions = (node.actions ?? []).filter((a) => a !== "focus");
+
+  // Only include bounds for interactable nodes (nodes with meaningful actions).
+  // Non-interactable nodes are context-only — agents reference them by ID, not
+  // by coordinates, so spatial info adds tokens without value.
   const bounds = node.bounds;
-  if (bounds) {
-    parts.push(`@${bounds.x},${bounds.y} ${bounds.w}x${bounds.h}`);
+  if (bounds && actions.length > 0) {
+    parts.push(`${bounds.x},${bounds.y} ${bounds.w}x${bounds.h}`);
   }
 
   const states = node.states ?? [];
   if (states.length > 0) {
-    parts.push("{" + states.join(",") + "}");
+    parts.push("{" + states.map((s) => STATE_CODES[s] ?? s).join(",") + "}");
   }
 
-  // Actions (drop "focus" — it's noise)
-  const actions = (node.actions ?? []).filter((a) => a !== "focus");
   if (actions.length > 0) {
-    parts.push("[" + actions.join(",") + "]");
+    parts.push("[" + actions.map((a) => ACTION_CODES[a] ?? a).join(",") + "]");
   }
 
   // Value for input-type elements
   const value = node.value || "";
-  if (value && VALUE_ROLES.has(node.role)) {
+  if (value && VALUE_ROLES.has(role)) {
     let truncatedVal = value.length > 120 ? value.slice(0, 120) + "..." : value;
     truncatedVal = truncatedVal.replace(/"/g, '\\"').replace(/\n/g, " ");
     parts.push(`val="${truncatedVal}"`);
@@ -436,7 +515,7 @@ export function serializeCompact(
     maxChars?: number;
   },
 ): string {
-  const detail = options?.detail ?? "standard";
+  const detail = options?.detail ?? "compact";
   const maxChars = options?.maxChars ?? MAX_OUTPUT_CHARS;
   const windowList = options?.windowList ?? null;
 
