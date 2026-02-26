@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <b>TypeScript SDK for the Computer Use Protocol</b>
+  TypeScript SDK for the Computer Use Protocol
 </p>
 
 <br>
