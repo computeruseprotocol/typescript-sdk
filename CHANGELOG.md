@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [0.1.0] - 2026-02-23
 
-Initial release. TypeScript implementation of the [Computer Use Protocol](https://github.com/computeruseprotocol/computer-use-protocol).
+Initial release. TypeScript implementation of the [Computer Use Protocol](https://github.com/computeruseprotocol/computeruseprotocol).
 
 ### Added
 - **Platform adapters** for tree capture:

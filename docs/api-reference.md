@@ -274,7 +274,7 @@ The text format returned by `session.snapshot({ compact: true })`. Optimized for
 
 Line format: `[id] role "name" x,y wxh {states} [actions] val="value" (attrs)`
 
-Full spec: [compact.md](https://github.com/computeruseprotocol/computer-use-protocol/blob/main/schema/compact.md)
+Full spec: [compact.md](https://github.com/computeruseprotocol/computeruseprotocol/blob/main/schema/compact.md)
 
 ---
 

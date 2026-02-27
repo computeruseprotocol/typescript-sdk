@@ -12,12 +12,12 @@
   <a href="https://www.npmjs.com/package/computeruseprotocol"><img src="https://img.shields.io/npm/v/computeruseprotocol" alt="npm version"></a>
   <a href="https://pypi.org/project/computeruseprotocol/"><img src="https://img.shields.io/pypi/v/computeruseprotocol" alt="PyPI version"></a>
   <a href="https://github.com/computeruseprotocol/typescript-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
-  <a href="https://github.com/computeruseprotocol/computer-use-protocol"><img src="https://img.shields.io/badge/spec-computer--use--protocol-green" alt="Spec"></a>
+  <a href="https://github.com/computeruseprotocol/computeruseprotocol"><img src="https://img.shields.io/badge/spec-computeruseprotocol-green" alt="Spec"></a>
 </p>
 
 ---
 
-The official TypeScript SDK for the [Computer Use Protocol (CUP)](https://github.com/computeruseprotocol/computer-use-protocol), a universal protocol for AI agents to perceive and interact with any desktop UI. This package provides tree capture, action execution, semantic search, and an MCP server for AI agent integration.
+The official TypeScript SDK for the [Computer Use Protocol (CUP)](https://github.com/computeruseprotocol/computeruseprotocol), a universal protocol for AI agents to perceive and interact with any desktop UI. This package provides tree capture, action execution, semantic search, and an MCP server for AI agent integration.
 
 ## Installation
 
@@ -187,7 +187,7 @@ CUP is in early development (v0.1.0). Contributions welcome, especially:
 - Tests, especially cross-platform integration tests
 - Documentation and examples
 
-For protocol or schema changes, please contribute to [computer-use-protocol](https://github.com/computeruseprotocol/computer-use-protocol).
+For protocol or schema changes, please contribute to [computeruseprotocol](https://github.com/computeruseprotocol/computeruseprotocol).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
 
