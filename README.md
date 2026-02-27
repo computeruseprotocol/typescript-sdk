@@ -47,7 +47,7 @@ const windows = await overview();
 
 Output:
 
-```
+```bash
 # CUP 0.1.0 | windows | 2560x1440
 # app: Spotify
 # 63 nodes (280 before pruning)
