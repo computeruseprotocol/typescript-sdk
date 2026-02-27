@@ -17,7 +17,7 @@
 
 ---
 
-The official TypeScript SDK for the [Computer Use Protocol (CUP)](https://github.com/computeruseprotocol/computer-use-protocol) — a universal protocol for AI agents to perceive and interact with any desktop UI. This package provides tree capture, action execution, semantic search, and an MCP server for AI agent integration.
+The official TypeScript SDK for the [Computer Use Protocol (CUP)](https://github.com/computeruseprotocol/computer-use-protocol), a universal protocol for AI agents to perceive and interact with any desktop UI. This package provides tree capture, action execution, semantic search, and an MCP server for AI agent integration.
 
 ## Installation
 
@@ -149,7 +149,7 @@ src/
     └── cli.ts                  # Stdio transport entry point
 ```
 
-Adding a new platform means implementing `PlatformAdapter` — see [src/base.ts](src/base.ts) for the interface.
+Adding a new platform means implementing `PlatformAdapter`. See [src/base.ts](src/base.ts) for the interface.
 
 ## MCP Server
 
@@ -180,11 +180,11 @@ Add to your MCP client config (e.g., `.mcp.json` for Claude Code):
 
 ## Contributing
 
-CUP is in early development (v0.1.0). Contributions welcome — especially:
+CUP is in early development (v0.1.0). Contributions welcome, especially:
 
 - Android adapter (`src/platforms/android.ts`)
 - iOS adapter (`src/platforms/ios.ts`)
-- Tests — especially cross-platform integration tests
+- Tests, especially cross-platform integration tests
 - Documentation and examples
 
 For protocol or schema changes, please contribute to [computer-use-protocol](https://github.com/computeruseprotocol/computer-use-protocol).
@@ -193,8 +193,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
 
 ## Documentation
 
-- **[API Reference](docs/api-reference.md)** — Session API, actions, envelope format, MCP server
-- **[Protocol Specification](https://github.com/computeruseprotocol/computeruseprotocol)** — Schema, roles, states, actions, compact format
+- **[API Reference](docs/api-reference.md)** - Session API, actions, envelope format, MCP server
+- **[Protocol Specification](https://github.com/computeruseprotocol/computeruseprotocol)** - Schema, roles, states, actions, compact format
 
 ## License
 
