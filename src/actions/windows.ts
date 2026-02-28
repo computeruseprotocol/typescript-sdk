@@ -591,10 +591,9 @@ export class WindowsActionHandler implements ActionHandler {
     }
 
     // Fallback: keyboard simulation via Unicode SendInput.
-    const focusResult = await this._uiaAction(hwnd, nodeIndex, "focus", {});
-    if (!focusResult.success) {
-      return { success: false, message: "", error: `Failed to focus element for typing: ${focusResult.error}` };
-    }
+    // Focus may fail on CEF/Chromium elements but the element might already be focused
+    // from a prior click, so we continue regardless.
+    await this._uiaAction(hwnd, nodeIndex, "focus", {});
 
     // Select all existing text
     await this.press("ctrl+a");
