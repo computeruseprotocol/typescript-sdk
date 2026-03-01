@@ -25,6 +25,8 @@ import {
   pruneTree,
   serializeCompact,
   serializeOverview,
+  serializePage,
+  findNodeById,
   formatLine,
 } from "./format.js";
 import { searchTree } from "./search.js";
@@ -49,6 +51,7 @@ export class Session {
   private executor: ActionExecutor;
   private lastTree: CupNode[] | null = null;
   private lastRawTree: CupNode[] | null = null;
+  private _pageCursors: Map<string, number> = new Map();
 
   private constructor(adapter: PlatformAdapter) {
     this.adapter = adapter;
@@ -174,6 +177,7 @@ export class Session {
     // Store raw tree for search + pruned tree for compact
     this.lastRawTree = envelope.tree;
     this.lastTree = pruneTree(envelope.tree, { detail });
+    this._pageCursors.clear();
 
     if (compact) {
       return serializeCompact(envelope, { windowList, detail });
@@ -189,6 +193,7 @@ export class Session {
     actionName: string,
     params?: Record<string, unknown>,
   ): Promise<ActionResult> {
+    this._pageCursors.clear();
     return this.executor.action(elementId, actionName, params);
   }
 
@@ -196,6 +201,7 @@ export class Session {
    * Send a keyboard shortcut to the focused window.
    */
   async press(combo: string): Promise<ActionResult> {
+    this._pageCursors.clear();
     return this.executor.press(combo);
   }
 
@@ -203,6 +209,7 @@ export class Session {
    * Open an application by name (fuzzy matched).
    */
   async openApp(name: string): Promise<ActionResult> {
+    this._pageCursors.clear();
     return this.executor.openApp(name);
   }
 
@@ -229,6 +236,107 @@ export class Session {
     });
 
     return results.map((r) => r.node);
+  }
+
+  /**
+   * Page through clipped content in a scrollable container.
+   *
+   * Serves slices of the cached raw tree — no UI scrolling needed.
+   * Provides deterministic, contiguous pagination of offscreen items.
+   */
+  page(
+    elementId: string,
+    options?: {
+      direction?: "up" | "down" | "left" | "right";
+      offset?: number;
+      limit?: number;
+    },
+  ): string {
+    if (this.lastRawTree === null || this.lastTree === null) {
+      throw new Error("No tree captured. Call snapshot() first.");
+    }
+
+    const rawContainer = findNodeById(this.lastRawTree, elementId);
+    if (!rawContainer) {
+      throw new Error(`Element '${elementId}' not found in current tree.`);
+    }
+
+    const rawChildren = rawContainer.children ?? [];
+    if (rawChildren.length === 0) {
+      throw new Error(`Container '${elementId}' has no children to paginate.`);
+    }
+
+    // Get pruned container for visible count and _clipped metadata
+    const prunedContainer = findNodeById(this.lastTree, elementId);
+    const visibleCount = prunedContainer?.children?.length ?? 0;
+    const clipped = prunedContainer?._clipped;
+    const clippedAbove = clipped?.above ?? 0;
+    const clippedBelow = clipped?.below ?? 0;
+    const clippedLeft = clipped?.left ?? 0;
+    const clippedRight = clipped?.right ?? 0;
+    const clippedCount = clippedAbove + clippedBelow + clippedLeft + clippedRight;
+
+    // Virtual scroll detection: if raw tree has far fewer children than
+    // visible + clipped, the content is likely lazy-loaded
+    if (clippedCount > 0) {
+      const expectedTotal = visibleCount + clippedCount;
+      if (rawChildren.length < expectedTotal * 0.8) {
+        throw new Error(
+          `Container '${elementId}' appears to use virtual scrolling ` +
+          `(raw: ${rawChildren.length}, expected: ~${expectedTotal}). ` +
+          `Use action(action='scroll', element_id='${elementId}', direction='...') ` +
+          `followed by snapshot() instead.`,
+        );
+      }
+    }
+
+    const direction = options?.direction;
+    const total = rawChildren.length;
+    const defaultPageSize = visibleCount > 0 ? visibleCount : 20;
+    const pageSize = options?.limit ?? defaultPageSize;
+
+    // Compute directional start offsets from clipping metadata.
+    // Clipped-above items are at the start of the children array (low indices),
+    // clipped-below items are at the end (high indices), because children are
+    // in document/spatial order.
+    const startDown = total - clippedBelow;   // first below-clipped child
+    const startUp = clippedAbove - 1;          // last above-clipped child (page backwards from here)
+    const startRight = total - clippedRight;
+    const startLeft = clippedLeft - 1;
+
+    // Determine offset
+    let currentOffset: number;
+    if (options?.offset != null) {
+      currentOffset = options.offset;
+    } else if (direction) {
+      const cursor = this._pageCursors.get(elementId);
+      if (cursor == null) {
+        // First page call — start at the boundary of clipped content
+        if (direction === "down") currentOffset = startDown;
+        else if (direction === "right") currentOffset = startRight;
+        else if (direction === "up") currentOffset = Math.max(0, startUp - pageSize + 1);
+        else /* left */ currentOffset = Math.max(0, startLeft - pageSize + 1);
+      } else {
+        currentOffset =
+          direction === "down" || direction === "right"
+            ? cursor + pageSize
+            : Math.max(0, cursor - pageSize);
+      }
+    } else {
+      // No direction or offset — show first page of hidden content
+      currentOffset = startDown;
+    }
+
+    // Clamp
+    currentOffset = Math.max(0, Math.min(currentOffset, total - 1));
+
+    // Slice
+    const pageItems = rawChildren.slice(currentOffset, currentOffset + pageSize);
+
+    // Track cursor
+    this._pageCursors.set(elementId, currentOffset);
+
+    return serializePage(rawContainer, pageItems, currentOffset, total);
   }
 
   /**

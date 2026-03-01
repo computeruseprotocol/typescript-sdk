@@ -246,7 +246,7 @@ Each node in the tree:
 }
 ```
 
-**Roles:** 54 ARIA-derived roles. See [schema/mappings.json](../schema/mappings.json) for the full list and per-platform mappings.
+**Roles:** 59 ARIA-derived roles. See [schema/mappings.json](../schema/mappings.json) for the full list and per-platform mappings.
 
 **States:** `busy`, `checked`, `collapsed`, `disabled`, `editable`, `expanded`, `focused`, `hidden`, `mixed`, `modal`, `multiselectable`, `offscreen`, `pressed`, `readonly`, `required`, `selected`
 

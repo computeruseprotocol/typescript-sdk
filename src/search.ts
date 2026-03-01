@@ -16,16 +16,14 @@ import type { CupNode, SearchResult } from "./types.js";
 // ---------------------------------------------------------------------------
 
 export const ALL_ROLES: ReadonlySet<string> = new Set([
-  "alert", "alertdialog", "application", "banner", "blockquote", "button",
-  "caption", "cell", "checkbox", "code", "columnheader", "combobox",
-  "complementary", "contentinfo", "deletion", "dialog", "document",
-  "emphasis", "figure", "form", "generic", "grid", "group", "heading",
-  "img", "insertion", "link", "list", "listitem", "log", "main", "marquee",
-  "math", "menu", "menubar", "menuitem", "menuitemcheckbox", "menuitemradio",
-  "navigation", "none", "note", "option", "paragraph", "progressbar",
-  "radio", "region", "row", "rowheader", "scrollbar", "search", "searchbox",
-  "separator", "slider", "spinbutton", "status", "strong", "subscript",
-  "superscript", "switch", "tab", "table", "tablist", "tabpanel", "text",
+  "alert", "alertdialog", "application", "banner", "button", "cell",
+  "checkbox", "columnheader", "combobox", "complementary", "contentinfo",
+  "dialog", "document", "form", "generic", "grid", "group", "heading",
+  "img", "link", "list", "listitem", "log", "main", "marquee", "menu",
+  "menubar", "menuitem", "menuitemcheckbox", "menuitemradio", "navigation",
+  "none", "option", "progressbar", "radio", "region", "row", "rowheader",
+  "scrollbar", "search", "searchbox", "separator", "slider", "spinbutton",
+  "status", "switch", "tab", "table", "tablist", "tabpanel", "text",
   "textbox", "timer", "titlebar", "toolbar", "tooltip", "tree", "treeitem",
   "window",
 ]);

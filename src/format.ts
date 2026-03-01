@@ -255,7 +255,7 @@ function pruneNode(
     const childBounds = child.bounds;
     if (childViewport && childBounds && isOutsideViewport(childBounds, childViewport)) {
       const dir = clipDirection(childBounds, childViewport);
-      clipped[dir as keyof typeof clipped] += countNodes([child]);
+      clipped[dir as keyof typeof clipped] += 1;
       hasClipped = true;
       continue;
     }
@@ -304,6 +304,22 @@ export function pruneTree(
     result.push(...pruneNode(root, null, tree.length, screenViewport));
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Tree utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Find a node by its element ID in a tree (recursive DFS).
+ */
+export function findNodeById(tree: CupNode[], id: string): CupNode | null {
+  for (const node of tree) {
+    if (node.id === id) return node;
+    const found = findNodeById(node.children ?? [], id);
+    if (found) return found;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -500,7 +516,8 @@ function emitCompact(node: CupNode, depth: number, lines: string[], counter: num
       if (left > 0) directions.push("left");
       if (right_ > 0) directions.push("right");
       const hintIndent = "  ".repeat(depth + 1);
-      lines.push(`${hintIndent}# ${total} more items — scroll ${directions.join("/")} to see`);
+      const dir = directions[0] ?? "down";
+      lines.push(`${hintIndent}# ${total} more items — page(element_id='${node.id}', direction='${dir}') to see`);
     }
   }
 }
@@ -572,4 +589,47 @@ export function serializeCompact(
   }
 
   return output;
+}
+
+/**
+ * Serialize a page of children from a scrollable container as compact text.
+ *
+ * Used by Session.page() to return a slice of clipped children without
+ * re-capturing the full tree.
+ */
+export function serializePage(
+  container: CupNode,
+  pageItems: CupNode[],
+  offset: number,
+  total: number,
+): string {
+  const roleName = ROLE_CODES[container.role] ?? container.role;
+  const nameStr = container.name ? ` "${container.name}"` : "";
+  const end = Math.min(offset + pageItems.length, total);
+  const headerLines = [
+    `# page ${container.id} | items ${offset + 1}-${end} of ${total} | ${roleName}${nameStr}`,
+    "",
+  ];
+
+  const lines: string[] = [];
+  const counter = [0];
+  for (const item of pageItems) {
+    emitCompact(item, 0, lines, counter);
+  }
+
+  const footerLines: string[] = [];
+  const remaining = total - end;
+  if (remaining > 0) {
+    footerLines.push("");
+    footerLines.push(
+      `# ${remaining} more — page(element_id='${container.id}', direction='down')`,
+    );
+  }
+  if (offset > 0) {
+    footerLines.push(
+      `# ${offset} before — page(element_id='${container.id}', direction='up')`,
+    );
+  }
+
+  return [...headerLines, ...lines, ...footerLines].join("\n") + "\n";
 }

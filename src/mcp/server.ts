@@ -20,15 +20,17 @@ export const server = new McpServer(
       "tree of the user's computer.\n\n" +
       "WORKFLOW — follow this pattern:\n" +
       "1. snapshot to capture the active window's UI\n" +
-      "2. find to locate specific elements (PREFERRED over re-capturing)\n" +
-      "3. action to interact (click, type, press, etc.)\n" +
-      "4. Re-capture ONLY after actions change the UI\n\n" +
+      "2. If you see 'N more items — page(...)', call page to see hidden items\n" +
+      "3. find to locate specific elements (PREFERRED over re-capturing)\n" +
+      "4. action to interact (click, type, press, etc.)\n" +
+      "5. Re-capture ONLY after actions change the UI\n\n" +
       "TOOLS:\n" +
       "- snapshot() — active window tree + window list (most common)\n" +
       "- snapshot_app(app) — specific app by title (when not in foreground)\n" +
       "- overview() — just the window list, near-instant\n" +
       "- snapshot_desktop() — desktop icons and widgets\n" +
       "- find(role/name/state) — search last tree without re-capturing\n" +
+      "- page(element_id, direction) — page through clipped items in a scrollable container\n" +
       "- action(action, ...) — interact with elements or press keys\n" +
       "- open_app(name) — open an app by name with fuzzy matching\n" +
       "- screenshot(region) — visual context when tree isn't enough\n\n" +
@@ -319,6 +321,52 @@ Both modes can be combined: query + state="focused" narrows to focused elements.
       ...lines,
     ].join("\n") + "\n";
     return { content: [{ type: "text", text }] };
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Pagination tool
+// ---------------------------------------------------------------------------
+
+server.tool(
+  "page",
+  `Page through clipped content in a scrollable container.
+
+When a snapshot shows "N more items — page(...) to see", use this
+tool to retrieve the next batch of hidden children from the cached tree.
+
+This does NOT scroll the actual UI — it serves from the cached tree.
+For guaranteed contiguity, call with just element_id and direction.
+
+After any action or new snapshot, pagination resets.`,
+  {
+    element_id: z.string().describe("Scrollable container element ID (e.g., 'e5')"),
+    direction: z
+      .enum(["up", "down", "left", "right"])
+      .optional()
+      .describe("Page direction — advance or retreat one page"),
+    offset: z.number().int().optional().describe("Jump to a specific child index (overrides direction)"),
+    limit: z.number().int().optional().describe("Override page size (default: match viewport count)"),
+  },
+  async ({ element_id, direction, offset, limit }) => {
+    const session = await getSession();
+    try {
+      const result = session.page(element_id, { direction, offset, limit });
+      return { content: [{ type: "text", text: result }] };
+    } catch (err: any) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              success: false,
+              message: "",
+              error: err.message ?? String(err),
+            }),
+          },
+        ],
+      };
+    }
   },
 );
 
